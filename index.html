@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0d4715">
+    <title>Sistem Qurban - Masjid Nurul Ihsan (Sync All Devices)</title>
+
+    <meta property="og:title" content="Pendaftaran Qurban Masjid Nurul Ihsan">
+    <meta property="og:description" content="Pendaftaran Qurban Online - Data Sinkron Semua Perangkat">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://qurban-nurul-ihsan.netlify.app/">
+    <meta property="og:image" content="https://qurban-nurul-ihsan.netlify.app/banner-qurban.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f0f7f0; padding: 10px; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 25px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #0d4715, #1a5c23); color: white; padding: 20px 15px; text-align: center; }
+        .header h1 { font-size: 1.5rem; }
+        @media (min-width: 768px) { .header h1 { font-size: 1.8rem; } body { padding: 15px; } .header { padding: 25px; } }
+        .nav { display: flex; flex-wrap: wrap; background: #2e7d32; gap: 3px; padding: 10px; justify-content: center; }
+        .nav-btn { background: #c8e6c9; border: none; padding: 10px 12px; border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 12px; color: #1a472a; flex: 1 0 auto; min-width: 70px; transition: all 0.2s; }
+        @media (min-width: 480px) { .nav-btn { padding: 12px 16px; font-size: 13px; min-width: 85px; } }
+        @media (min-width: 768px) { .nav-btn { padding: 12px 20px; font-size: 14px; flex: 0 1 auto; } }
+        .nav-btn.active { background: #ff9800; color: white; }
+        .nav-btn:hover { background: #ff9800; color: white; }
+        .page { display: none; padding: 15px; }
+        @media (min-width: 768px) { .page { padding: 25px; } }
+        .page.active { display: block; }
+        .table-responsive { overflow-x: auto; margin: 15px 0; border-radius: 15px; border: 1px solid #c8e6c9; }
+        table { width: 100%; border-collapse: collapse; min-width: 550px; }
+        th, td { border: 1px solid #c8e6c9; padding: 10px; text-align: left; font-size: 12px; }
+        @media (min-width: 768px) { th, td { padding: 12px; font-size: 13px; } }
+        th { background: #2e7d32; color: white; }
+        tr:nth-child(even) { background: #f5f9f5; }
+        .form-section { background: #fef9e6; padding: 15px; border-radius: 20px; margin-bottom: 20px; border: 1px solid #ffd966; }
+        @media (min-width: 768px) { .form-section { padding: 20px; } }
+        .form-group { display: flex; flex-wrap: wrap; margin-bottom: 12px; align-items: flex-start; gap: 8px; }
+        .form-group label { width: 100%; font-weight: bold; color: #2e7d32; font-size: 13px; }
+        @media (min-width: 480px) { .form-group label { width: 130px; font-size: 14px; margin-top: 10px; } }
+        @media (min-width: 768px) { .form-group label { width: 150px; } .form-group { align-items: center; } }
+        .form-group input, .form-group select, .form-group textarea { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid #ccc; font-size: 16px; width: 100%; background: white; min-height: 44px; }
+        button { padding: 10px 16px; border-radius: 30px; border: none; cursor: pointer; font-weight: bold; font-size: 13px; margin: 5px; transition: 0.2s; min-height: 44px; }
+        .btn-primary { background: #2e7d32; color: white; }
+        .btn-primary:hover { background: #1b5e20; }
+        .btn-warning { background: #ff9800; color: white; }
+        .btn-warning:hover { background: #f57c00; }
+        .btn-danger { background: #d32f2f; color: white; }
+        .btn-danger:hover { background: #c62828; }
+        .btn-info { background: #2196f3; color: white; }
+        .btn-info:hover { background: #1976d2; }
+        .btn-wa { background: #25D366; color: white; }
+        .btn-wa:hover { background: #128C7E; }
+        .btn-success { background: #4caf50; color: white; }
+        .card-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: linear-gradient(135deg, #fff8e1, #ffecb3); border-radius: 15px; padding: 15px; flex: 1 1 calc(50% - 12px); min-width: 130px; text-align: center; border-bottom: 4px solid #ff9800; }
+        @media (min-width: 480px) { .stat-card { flex: 1 1 calc(33.33% - 12px); } }
+        @media (min-width: 768px) { .stat-card { flex: 1; min-width: 160px; padding: 20px; } }
+        .stat-card h3 { font-size: 12px; color: #5d4037; margin-bottom: 8px; }
+        .stat-number { font-size: 22px; font-weight: bold; color: #2e7d32; }
+        @media (min-width: 768px) { .stat-number { font-size: 32px; } }
+        .kupon-container { display: flex; flex-wrap: wrap; gap: 15px; margin-top: 15px; justify-content: center; }
+        .kupon-card { width: 100%; max-width: 380px; padding: 15px; border-radius: 15px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); }
+        @media (min-width: 480px) { .kupon-card { width: calc(50% - 15px); max-width: none; } }
+        @media (min-width: 1024px) { .kupon-card { width: calc(33.33% - 15px); } }
+        .kupon-shq-kambing { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-left: 8px solid #2e7d32; }
+        .kupon-shq-sapi { background: linear-gradient(135deg, #e3f2fd, #bbdef5); border-left: 8px solid #1565c0; }
+        .kupon-pq { background: linear-gradient(135deg, #fff3e0, #ffe0b2); border-left: 8px solid #ff9800; }
+        .kupon-code { font-size: 18px; font-weight: bold; font-family: monospace; text-align: center; margin: 10px 0; letter-spacing: 2px; word-break: break-word; }
+        @media (min-width: 768px) { .kupon-code { font-size: 20px; } }
+        .kelompok-card { background: #e3f2fd; padding: 12px; border-radius: 15px; margin: 8px; border-left: 5px solid #2196f3; width: calc(100% - 16px); display: inline-block; vertical-align: top; }
+        @media (min-width: 480px) { .kelompok-card { width: calc(50% - 16px); } }
+        @media (min-width: 1024px) { .kelompok-card { width: calc(33.33% - 16px); } }
+        .login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 15px; }
+        .login-box { background: white; padding: 25px; border-radius: 25px; width: 100%; max-width: 400px; text-align: center; }
+        @media (min-width: 480px) { .login-box { padding: 40px; } }
+        .login-box input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 30px; border: 1px solid #ccc; font-size: 16px; }
+        .login-box button { width: 100%; padding: 12px; margin: 8px 0; font-size: 16px; }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: bold; }
+        @media (min-width: 768px) { .badge { padding: 4px 12px; font-size: 11px; } }
+        .badge-sudah { background: #1565c0; color: white; }
+        .badge-belum { background: #d32f2f; color: white; }
+        .badge-fakir { background: #1a237e; color: white; }
+        .badge-miskin { background: #b71c1c; color: white; }
+        .badge-yatim { background: #004d40; color: white; }
+        .badge-dhuafa { background: #e65100; color: white; }
+        .badge-janda { background: #4a148c; color: white; }
+        .badge-lansia { background: #3e2723; color: white; }
+        .role-badge { background: #ff9800; display: inline-block; padding: 5px 12px; border-radius: 30px; margin-top: 10px; font-weight: bold; font-size: 12px; }
+        .footer { text-align: center; padding: 12px; background: #1a472a; color: white; font-size: 11px; }
+        .sub-title { background: #2e7d32; color: white; padding: 8px 12px; border-radius: 12px; margin: 15px 0 10px; font-size: 14px; }
+        .chart-container { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 15px; justify-content: center; }
+        .chart-box { flex: 1; min-width: 250px; background: white; padding: 15px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .rekening-box { background: #fff3e0; padding: 12px; border-radius: 15px; margin: 15px; border: 1px solid #ff9800; text-align: center; }
+        .info-box { background: #e3f2fd; padding: 12px; border-radius: 15px; margin: 15px; border-left: 5px solid #2196f3; }
+        .alert { padding: 12px; border-radius: 10px; margin: 15px; font-size: 12px; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .hidden { display: none; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; }
+        .btn-group button { flex: 1; min-width: 120px; }
+        .btn-large { padding: 12px 20px; font-size: 16px; }
+        .catatan-display { background: #fff3e0; padding: 6px; border-radius: 8px; margin-top: 5px; font-size: 11px; border-left: 3px solid #ff9800; cursor: pointer; word-break: break-word; }
+        .btn-edit-sm, .btn-delete-sm { padding: 4px 8px; font-size: 11px; border-radius: 15px; margin: 2px; }
+        .btn-edit-sm { background: #2196f3; color: white; }
+        .btn-delete-sm { background: #d32f2f; color: white; }
+        .scanner-section { background: #1a1a2e; border-radius: 20px; padding: 15px; margin-bottom: 20px; }
+        .scanner-container { display: flex; flex-wrap: wrap; gap: 15px; }
+        .scanner-box { flex: 1; min-width: 250px; background: white; border-radius: 15px; padding: 15px; text-align: center; }
+        #reader video { border-radius: 15px; width: 100%; max-height: 300px; object-fit: cover; }
+        .manual-input { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px; }
+        .manual-input input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #ccc; font-size: 14px; text-align: center; font-family: monospace; min-width: 120px; }
+        .qr-code img { max-width: 100%; height: auto; }
+        canvas { max-width: 100%; height: auto; }
+        pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; }
+        .action-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+        .hewan-stats { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 15px; padding: 15px; margin-bottom: 20px; text-align: center; }
+        .hewan-stats h4 { color: #2e7d32; margin-bottom: 10px; font-size: 14px; }
+        .hewan-stats .hewan-number { font-size: 28px; font-weight: bold; color: #e65100; }
+        .backup-info { background: #e8f5e9; border: 1px solid #2e7d32; border-radius: 10px; padding: 10px; margin-bottom: 15px; font-size: 12px; }
+        .loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 10000; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+        .sync-status { position: fixed; bottom: 20px; right: 20px; background: #2e7d32; color: white; padding: 8px 15px; border-radius: 30px; font-size: 11px; z-index: 1000; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .sync-dot { width: 10px; height: 10px; border-radius: 50%; background: #4caf50; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        @media print { .no-print, .nav, .btn, .action-bar, .form-section, .header button, .footer, .login-overlay, .scanner-section, .sync-status { display: none !important; } .page { display: block !important; } .kupon-card { page-break-after: avoid; } }
+    </style>
+</head>
+<body>
+
+<div id="loadingScreen" class="loading-screen">
+    <div style="font-size: 40px;">🕌</div>
+    <div style="margin-top: 20px;">Menghubungkan ke Database...</div>
+    <div style="margin-top: 10px; font-size: 12px; color: #666;">Sistem Qurban - Sinkron Semua Perangkat</div>
+</div>
+
+<div id="loginOverlay" class="login-overlay">
+    <div class="login-box">
+        <h2>🕌 PENDAFTARAN QURBAN</h2>
+        <p style="margin:10px 0; color:#666">Masjid Nurul Ihsan<br>1447 H / 2026 M</p>
+        <p style="font-size:12px; color:#4caf50; margin-bottom:10px">✅ Data Sinkron Real-Time (Semua Perangkat)</p>
+        <button id="adminBtn" style="background:#1a472a; color:white; width:100%; padding:12px; border-radius:30px; margin:5px 0">👑 ADMIN / PANITIA</button>
+        <button id="daftarBtn" class="btn-warning" style="width:100%; padding:12px; border-radius:30px; margin:5px 0">📝 PENDAFTARAN JAMAAH</button>
+        <div id="passwordSection" class="hidden" style="margin-top:15px; border-top:1px solid #eee; padding-top:15px">
+            <input type="password" id="passwordInput" placeholder="Kode Akses Admin">
+            <button id="loginAdminBtn" class="btn-primary" style="width:100%">🔐 LOGIN</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODE JAMAAH -->
+<div id="jamaahMode" style="display:none">
+<div class="container">
+    <div class="header">
+        <h1>🕌 PENDAFTARAN QURBAN ONLINE</h1>
+        <p>Masjid Nurul Ihsan - 1447 H / 2026 M</p>
+        <div class="role-badge">📝 FORM PENDAFTARAN JAMAAH</div>
+        <button id="switchToAdminFromJamaah" style="margin-top:10px; background:#1a472a; color:white; border:none; padding:5px 15px; border-radius:20px; cursor:pointer">👑 ADMIN</button>
+    </div>
+    <div style="padding:15px">
+        <div class="info-box">
+            <h3 style="color:#1565c0; margin-bottom:10px">📍 LOKASI MASJID NURUL IHSAN</h3>
+            <p>Perumahan Pondok Timur Indah 1 Blok C, Jl. Titiran Raya RT 004 / RW 004</p>
+            <p>Kelurahan Mustika Jaya, Kecamatan Mustika Jaya, Kota Bekasi, Jawa Barat 17158</p>
+        </div>
+        <div class="rekening-box">
+            <div style="font-size:18px; font-weight:bold; color:#ff9800">🏦 BANK SYARIAH INDONESIA (BSI)</div>
+            <div style="font-size:20px; font-weight:bold; letter-spacing:2px; margin:10px 0">7251 0530 08</div>
+            <div>a.n. <strong>MASJID NURUL IHSAN</strong></div>
+        </div>
+        <div class="rekening-box" style="background:#f9f9f9">
+            <h3>📱 SCAN QRIS UNTUK PEMBAYARAN</h3>
+            <div id="qrisContainerJamaah"></div>
+            <p style="font-size:11px">Scan QR di atas menggunakan mobile banking</p>
+        </div>
+        <div class="form-section">
+            <h3 style="margin-bottom:15px; color:#2e7d32">🐏 INFORMASI PENDAFTARAN</h3>
+            <div class="form-group"><label>Jenis Qurban</label><select id="jenisQurbanPendaftar"><option value="kambing">🐏 Kambing/Domba - Rp 150.000</option><option value="sapi">🐃 Sapi - Rp 3.700.000</option></select></div>
+            <div class="form-group"><label>Nama Lengkap</label><input type="text" id="namaPendaftar" placeholder="Nama lengkap"></div>
+            <div class="form-group"><label>Alamat</label><input type="text" id="alamatPendaftar" placeholder="Alamat lengkap"></div>
+            <div class="form-group"><label>No HP / WhatsApp</label><input type="tel" id="hpPendaftar" placeholder="Nomor HP aktif (wajib)"></div>
+            <div class="form-group"><label>Catatan (opsional)</label><textarea id="catatanPendaftar" rows="3" placeholder="Contoh: minta bagian paha, kirim dokumentasi, dll"></textarea></div>
+            <div><button id="btnKonfirmasiWAJamaah" class="btn-wa" style="width:100%; padding:12px;">📱 KONFIRMASI PEMBAYARAN & DAFTAR</button></div>
+            <div id="notifikasiDaftar" class="alert alert-success hidden" style="margin-top:15px"></div>
+        </div>
+        <div class="alert alert-warning"><strong>⚠️ PENTING:</strong><br>Setelah transfer, klik tombol WhatsApp untuk konfirmasi. Data akan tersimpan otomatis di database pusat dan bisa diakses semua panitia.</div>
+    </div>
+    <div class="footer">© SISTEM QURBAN - MASJID NURUL IHSAN</div>
+</div>
+</div>
+
+<!-- MODE ADMIN -->
+<div id="adminMode" style="display:none">
+<div class="container">
+    <div class="header">
+        <h1>🕌 SISTEM MANAJEMEN QURBAN</h1>
+        <p>Masjid Nurul Ihsan - 1447 H / 2026 M</p>
+        <div class="role-badge">🔐 MODE PANITIA - SINKRON SEMUA PERANGKAT</div>
+        <button id="switchToJamaahFromAdmin" style="margin-top:10px; background:#4caf50; color:white; border:none; padding:5px 15px; border-radius:20px; cursor:pointer">📝 BUKA PENDAFTARAN</button>
+    </div>
+    
+    <div class="nav no-print">
+        <button class="nav-btn active" data-page="dashboard">📊 DASHBOARD</button>
+        <button class="nav-btn" data-page="scan">📷 SCAN</button>
+        <button class="nav-btn" data-page="kambing">🐏 KAMBING</button>
+        <button class="nav-btn" data-page="sapi">🐃 SAPI</button>
+        <button class="nav-btn" data-page="kelompok">👥 KELOMPOK</button>
+        <button class="nav-btn" data-page="penerima">🎁 PQ</button>
+        <button class="nav-btn" data-page="kupon">🎫 KUPON SHQ</button>
+        <button class="nav-btn" data-page="kuponpq">🍖 KUPON PQ</button>
+        <button class="nav-btn" data-page="laporan">📊 LAPORAN</button>
+        <button class="nav-btn" data-page="backup">💾 BACKUP</button>
+    </div>
+
+    <div id="dashboard" class="page active">
+        <h2>📈 DASHBOARD</h2>
+        <div class="card-grid" id="statsArea"></div>
+        <div class="card-grid" style="margin-top:10px"><div class="stat-card"><h3>🍖 TOTAL DAGING TELAH DIBAGIKAN</h3><div class="stat-number" id="totalDagingTelahDibagikan">0 kg</div></div></div>
+        <div class="chart-container"><div class="chart-box"><h3>📊 Perbandingan Jumlah Peserta</h3><canvas id="chartJenis"></canvas></div><div class="chart-box"><h3>💰 Perbandingan Total Biaya</h3><canvas id="chartBiaya"></canvas></div></div>
+    </div>
+
+    <div id="scan" class="page">
+        <h2>📷 SCAN KUPON QURBAN</h2>
+        <div class="scanner-section"><div class="scanner-title" style="color:white; margin-bottom:15px"><h3 style="color:white">Scan Kode Kupon (SHQ/PQ)</h3></div>
+        <div class="scanner-container"><div class="scanner-box"><h4>📱 Scan QR Code</h4><div id="reader" style="width:100%"></div><div id="scanResult" class="scan-result info" style="display:none"></div></div>
+        <div class="scanner-box"><h4>⌨️ Input Manual</h4><div class="manual-input"><input type="text" id="manualKuponCode" placeholder="SHQ-001 atau PQ-001" style="text-transform:uppercase"><button id="btnCekKupon" class="btn-primary">🔍 CEK</button></div><div id="manualResult" class="scan-result" style="display:none"></div></div></div></div>
+        <div class="form-section"><h3>📋 Riwayat Scan</h3><div class="table-responsive"><table id="tabelRiwayatScan"><thead><tr><th>Waktu</th><th>Kode</th><th>Jenis</th><th>Nama</th><th>Status</th></tr></thead><tbody id="riwayatScanBody"></tbody></table></div><button id="clearRiwayatBtn" class="btn-warning">🗑️ Hapus Riwayat</button></div>
+    </div>
+
+    <div id="kambing" class="page">
+        <h2>🐏 SOHIBUL KAMBING</h2>
+        <div class="form-section"><div style="background:#fff3e0; padding:10px; border-radius:12px; margin-bottom:15px">💰 Biaya: Rp 150.000/orang</div>
+        <div class="form-group"><label>Nama Lengkap</label><input type="text" id="namaKambing" placeholder="Nama lengkap"></div>
+        <div class="form-group"><label>Jenis Hewan</label><select id="jenisKambing"><option>Kambing</option><option>Domba</option></select></div>
+        <div class="form-group"><label>Alamat</label><input type="text" id="alamatKambing" placeholder="Alamat"></div>
+        <div class="form-group"><label>No HP</label><input type="tel" id="hpKambing" placeholder="No HP (wajib)"></div>
+        <div class="form-group"><label>Catatan</label><textarea id="catatanKambing" rows="2" placeholder="Catatan untuk kupon"></textarea></div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px"><button id="simpanKambing" class="btn-primary">✅ SIMPAN DATA</button><button id="resetKambing" class="btn-warning">🔄 RESET</button></div></div>
+        <div class="table-responsive"><table id="tabelKambing"><thead><tr><th>Kode</th><th>Jenis</th><th>Nama</th><th>Alamat</th><th>HP</th><th>Kupon</th><th>Catatan</th><th>Aksi</th><tr></thead><tbody></tbody></table></div>
+    </div>
+
+    <div id="sapi" class="page">
+        <h2>🐃 SOHIBUL SAPI</h2>
+        <div class="form-section"><div style="background:#e3f2fd; padding:10px; border-radius:12px; margin-bottom:15px">💰 Biaya: Rp 3.700.000/orang (7 orang per ekor)</div>
+        <div class="form-group"><label>Nama Lengkap</label><input type="text" id="namaSapi" placeholder="Nama lengkap"></div>
+        <div class="form-group"><label>Alamat</label><input type="text" id="alamatSapi" placeholder="Alamat"></div>
+        <div class="form-group"><label>No HP</label><input type="tel" id="hpSapi" placeholder="No HP (wajib)"></div>
+        <div class="form-group"><label>Catatan</label><textarea id="catatanSapi" rows="2" placeholder="Catatan untuk kupon"></textarea></div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px"><button id="simpanSapi" class="btn-primary">✅ SIMPAN DATA</button><button id="resetSapi" class="btn-warning">🔄 RESET</button></div></div>
+        <div class="table-responsive"><table id="tabelSapi"><thead><tr><th>Kode</th><th>Nama</th><th>Alamat</th><th>HP</th><th>Kupon</th><th>Catatan</th><th>Aksi</th></tr></thead><tbody></tbody></table></div>
+    </div>
+
+    <div id="kelompok" class="page">
+        <h2>👥 KELOMPOK SAPI (7 Orang per Ekor)</h2>
+        <div class="action-bar"><button id="autoGroupBtn" class="btn-primary">✨ AUTO GROUPING</button><button id="resetKelompokBtn" class="btn-danger">🔄 RESET</button></div>
+        <div id="daftarKelompok" style="display:flex; flex-wrap:wrap; gap:15px; margin-top:20px;"></div>
+    </div>
+
+    <div id="penerima" class="page">
+        <h2>🎁 PENDAFTARAN PQ (PENERIMA QURBAN)</h2>
+        <div class="form-section"><div class="form-group"><label>Nama Penerima</label><input type="text" id="namaPenerima" placeholder="Nama mustahik"></div>
+        <div class="form-group"><label>Alamat</label><input type="text" id="alamatPenerima" placeholder="Alamat"></div>
+        <div class="form-group"><label>No HP</label><input type="tel" id="hpPenerima" placeholder="No HP"></div>
+        <div class="form-group"><label>Kategori</label><select id="kategoriPenerima"><option value="Fakir">🧕 Fakir</option><option value="Miskin">😔 Miskin</option><option value="Yatim">👦 Yatim</option><option value="Dhuafa">🤲 Dhuafa</option><option value="Janda">👩 Janda</option><option value="Lansia">👴 Lansia</option></select></div>
+        <div class="form-group"><label>Jatah (kg)</label><input type="number" id="jatahPenerima" value="2" step="0.5"></div>
+        <div class="form-group"><label>Keterangan</label><textarea id="catatanPenerima" rows="2" placeholder="Keterangan tambahan"></textarea></div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px"><button id="simpanPenerima" class="btn-primary">✅ SIMPAN DATA</button><button id="resetPenerima" class="btn-warning">🔄 RESET</button></div></div>
+        <div class="table-responsive"><table id="tabelPenerima"><thead><tr><th>No</th><th>Kupon</th><th>Nama</th><th>Alamat</th><th>HP</th><th>Kategori</th><th>Jatah</th><th>Status</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody></tbody></table></div>
+    </div>
+
+    <div id="daftarpenerimaan" class="page">
+        <div class="sub-title">🐏🐃 SOHIBUL QURBAN</div>
+        <div class="table-responsive"><table id="tabelSohibulPenerimaan"><thead><tr><th>No</th><th>Kode</th><th>Nama</th><th>Jenis</th><th>Alamat</th><th>HP</th><th>Catatan</th><th>Kupon</th><th>Status</th></thead><tbody></tbody></table></div>
+        <div class="sub-title">🍖 PENERIMA QURBAN (PQ)</div>
+        <div class="table-responsive"><table id="tabelPenerimaPenerimaan"><thead><tr><th>No</th><th>Nama</th><th>Alamat</th><th>HP</th><th>Kategori</th><th>Jatah</th><th>Keterangan</th><th>Kupon</th><th>Status</th></thead><tbody></tbody></table></div>
+    </div>
+
+    <div id="kupon" class="page"><h2>🎫 KUPON SOHIBUL QURBAN</h2><div class="action-bar"><button id="cetakSemuaSHQ" class="btn-warning">🖨️ CETAK SEMUA</button></div><div id="daftarKuponSHQ" class="kupon-container"></div></div>
+    <div id="kuponpq" class="page"><h2>🍖 KUPON PENERIMA QURBAN (PQ)</h2><div class="action-bar"><button id="cetakSemuaPQ" class="btn-warning">🖨️ CETAK SEMUA</button></div><div id="daftarKuponPQ" class="kupon-container"></div></div>
+
+    <div id="laporan" class="page">
+        <h2>📊 LAPORAN</h2>
+        <div class="hewan-stats" id="hewanStats"><h4>🐏 JUMLAH HEWAN QURBAN</h4><div style="display:flex; justify-content:center; gap:30px; flex-wrap:wrap;"><div><span>Kambing/Domba</span><br><span class="hewan-number" id="jmlKambing">0</span> ekor</div><div><span>Sapi</span><br><span class="hewan-number" id="jmlSapiHewan">0</span> ekor</div></div></div>
+        <div class="card-grid" id="laporanStats"></div>
+        <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap">
+            <button id="copyLaporanBtn" class="btn-info">📋 COPY LAPORAN</button>
+            <button id="waLaporanBtn" class="btn-wa">📱 KIRIM VIA WHATSAPP</button>
+        </div>
+        <pre id="teksLaporan" style="background:#f5f5f5; padding:15px; border-radius:15px; white-space:pre-wrap; margin-top:15px; font-size:12px"></pre>
+    </div>
+
+    <div id="backup" class="page">
+        <h2>💾 BACKUP DATA</h2>
+        <div class="form-section">
+            <div class="backup-info"><strong>ℹ️ INFORMASI:</strong> Data sudah tersimpan otomatis di cloud Firebase. Fitur backup ini untuk cadangan tambahan jika diperlukan.</div>
+            <div style="display:flex; flex-wrap:wrap; gap:10px; margin:15px 0"><button id="backupDataBtn" class="btn-primary">💾 BACKUP DATA KE FILE</button><button id="resetAllDataBtn" class="btn-danger">⚠️ RESET SEMUA DATA</button></div>
+            <div id="restoreSection" style="margin-top:20px"><h4>📋 RESTORE DATA:</h4><p style="font-size:12px; margin-top:5px">Pilih file backup untuk mengembalikan data:</p><input type="file" id="restoreFileInput" accept=".json" style="margin:10px 0; padding:8px"><button id="restoreDataBtn" class="btn-warning">🔄 RESTORE DARI FILE</button></div>
+            <div id="backupStatus" class="alert alert-info" style="display:none; margin-top:15px"></div>
+        </div>
+        <div class="alert alert-warning"><strong>⚠️ PERINGATAN:</strong><br>- Tombol "RESET SEMUA DATA" akan menghapus SEMUA data di database Firebase.<br>- Sebelum reset, buat backup terlebih dahulu jika ingin menyimpan data.<br>- Data sudah otomatis tersimpan di cloud, tidak perlu restore manual kecuali ingin memulihkan dari backup.</div>
+    </div>
+    
+    <div class="footer">© SISTEM QURBAN - MASJID NURUL IHSAN | 1447 H / 2026 M</div>
+</div>
+</div>
+
+<div class="sync-status no-print">
+    <span class="sync-dot"></span>
+    <span id="syncText">Tersinkronisasi</span>
+</div>
+
+<script>
+// ==================== KONFIGURASI FIREBASE ====================
+// Konfigurasi dari project Firebase Anda yang sudah dibuat
+const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyB6xF0RYLp3Nrl9B49CQLYIYQnbABEHFzc",
+    authDomain: "qurban-ni-1447.firebaseapp.com",
+    databaseURL: "https://qurban-ni-1447-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "qurban-ni-1447",
+    storageBucket: "qurban-ni-1447.firebasestorage.app",
+    messagingSenderId: "320052832851",
+    appId: "1:320052832851:web:b8278ec49aa51d033b74a6"
+};
+
+// ==================== KONSTANTA ====================
+const NOMOR_ADMIN = '6281270225550';
+const REKENING_BSI = '7251053008';
+const NAMA_REKENING = 'MASJID NURUL IHSAN';
+const BIAYA_KAMBING = 150000;
+const BIAYA_SAPI = 3700000;
+const PASSWORD_ADMIN = '1447';
+
+// ==================== DATA STATE ====================
+let dataKambing = [], dataSapi = [], dataPenerima = [];
+let kuponSHQ = [], kuponPQ = [], kelompokSapi = [], riwayatScan = [];
+let chartJenis = null, chartBiaya = null, html5QrcodeScanner = null;
+let database = null, firebaseReady = false;
+
+// ==================== INISIALISASI FIREBASE ====================
+function initFirebase() {
+    try {
+        if (firebase.apps.length === 0) {
+            firebase.initializeApp(FIREBASE_CONFIG);
+        }
+        database = firebase.database();
+        firebaseReady = true;
+        console.log("✅ Firebase Connected - Data akan sinkron otomatis!");
+        document.getElementById('syncText').innerHTML = 'Tersinkronisasi';
+        return true;
+    } catch(e) {
+        console.error("Firebase Error:", e);
+        document.getElementById('loadingScreen').innerHTML = `
+            <div style="text-align:center;padding:20px">
+                <div style="font-size:40px">⚠️</div>
+                <h3>Koneksi Firebase Gagal!</h3>
+                <p>Periksa konfigurasi Firebase Anda.</p>
+                <p style="font-size:12px;color:#666">Pastikan Realtime Database sudah aktif dan rules sudah diset read/write true</p>
+                <button onclick="location.reload()" style="margin-top:20px;padding:10px 20px">🔄 Refresh</button>
+            </div>
+        `;
+        return false;
+    }
+}
+
+// ==================== FUNGSI SINKRONISASI FIREBASE ====================
+function loadFromFirebase() {
+    if (!firebaseReady || !database) return false;
+    
+    const dataRef = database.ref('qurbanData');
+    dataRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            dataKambing = data.dataKambing || [];
+            dataSapi = data.dataSapi || [];
+            dataPenerima = data.dataPenerima || [];
+            kuponSHQ = data.kuponSHQ || [];
+            kuponPQ = data.kuponPQ || [];
+            kelompokSapi = data.kelompokSapi || [];
+            riwayatScan = data.riwayatScan || [];
+            renderAllAdmin();
+        }
+        document.getElementById('loadingScreen').style.display = 'none';
+        document.getElementById('syncText').innerHTML = 'Tersinkronisasi';
+    });
+    return true;
+}
+
+async function saveAll() {
+    if (!firebaseReady || !database) return;
+    
+    const data = {
+        dataKambing, dataSapi, dataPenerima,
+        kuponSHQ, kuponPQ, kelompokSapi, riwayatScan,
+        lastUpdated: firebase.database.ServerValue.TIMESTAMP
+    };
+    
+    document.getElementById('syncText').innerHTML = 'Menyimpan...';
+    await database.ref('qurbanData').set(data);
+    setTimeout(() => {
+        if (document.getElementById('syncText')) {
+            document.getElementById('syncText').innerHTML = 'Tersinkronisasi';
+        }
+    }, 1000);
+}
+
+// ==================== FUNGSI CRUD DASAR ====================
+function getNextKodeKambing() { if (dataKambing.length===0) return "KB001"; let m=0; for(let p of dataKambing) m=Math.max(m,parseInt(p.kode.substring(2))); return `KB${String(m+1).padStart(3,'0')}`; }
+function getNextKodeSapi() { if (dataSapi.length===0) return "SP001"; let m=0; for(let p of dataSapi) m=Math.max(m,parseInt(p.kode.substring(2))); return `SP${String(m+1).padStart(3,'0')}`; }
+function getNextKodePenerima() { if (dataPenerima.length===0) return "PQ001"; let m=0; for(let p of dataPenerima) m=Math.max(m,parseInt(p.kode.substring(2))); return `PQ${String(m+1).padStart(3,'0')}`; }
+function generateKuponSHQKode() { if (kuponSHQ.length===0) return "SHQ-001"; let m=0; for(let k of kuponSHQ) m=Math.max(m,parseInt(k.kode.split('-')[1])); return `SHQ-${String(m+1).padStart(3,'0')}`; }
+function generateKuponPQKode() { if (kuponPQ.length===0) return "PQ-001"; let m=0; for(let k of kuponPQ) m=Math.max(m,parseInt(k.kode.split('-')[1])); return `PQ-${String(m+1).padStart(3,'0')}`; }
+function hitungTotalDagingDibagikan() { return dataPenerima.reduce((s,p)=>s+(p.status==='Sudah'?p.jatah:0),0); }
+function hitungJumlahHewanQurban() { return { kambing: dataKambing.length, sapi: Math.ceil(dataSapi.length/7) }; }
+function getUrutanSapiUntukPeserta(id) { let idx=[...dataSapi].sort((a,b)=>a.id-b.id).findIndex(p=>p.id===id); return idx===-1?1:(idx%7)+1; }
+function getKelompokUntukPeserta(id) { if(kelompokSapi.length===0) return null; let p=dataSapi.find(p=>p.id===id); if(!p) return null; for(let i=0;i<kelompokSapi.length;i++) if(kelompokSapi[i].anggota?.some(a=>a.kode===p.kode)) return i+1; return null; }
+function getQurbanHewanText(jenis,id=null) { if(jenis==='kambing'||jenis==='Kambing') return "Kambing/Domba (perorangan)"; let u=id?getUrutanSapiUntukPeserta(id):(dataSapi.length%7)+1; if(u===0) u=7; let k=id?getKelompokUntukPeserta(id):null; return `Sapi (urunan ke ${u}/7 orang${k?` kelompok ${k}`:''})`; }
+
+function buatKuponOtomatisSHQ(p,t) { let k={id:Date.now(),kode:generateKuponSHQKode(),pesertaId:p.id,jenis:t,nama:p.nama,alamat:p.alamat||'',hp:p.hp||'',catatan:p.catatan||'-',status:'Belum Diambil',waktuDaftar:p.waktuDaftar}; kuponSHQ.push(k); saveAll(); return k; }
+function buatKuponOtomatisPQ(p) { let k={id:Date.now(),kode:generateKuponPQKode(),penerimaId:p.id,nama:p.nama,kategori:p.kategori,jatah:p.jatah,hp:p.hp||'',catatan:p.catatan||'-',status:'Belum Diambil',waktuDaftar:p.waktuDaftar}; kuponPQ.push(k); saveAll(); return k; }
+
+// ==================== SCAN KUPON ====================
+function startScanner() { let e=document.getElementById('reader'); if(!e) return; if(html5QrcodeScanner) html5QrcodeScanner.clear().catch(e=>{}); if(typeof Html5QrcodeScanner!=='undefined') try{html5QrcodeScanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:{width:250,height:250}}); html5QrcodeScanner.render(s=>s&&prosesScanKupon(s.toUpperCase().trim()),()=>{});}catch(e){console.log(e);} }
+function prosesScanKupon(kode) { let k=kuponSHQ.find(k=>k.kode===kode); if(k){ if(k.status==='Sudah Diambil'){tampilkanHasilScan(false,kode,"SHQ",k.nama,"Sudah pernah diambil!");return;} k.status='Sudah Diambil'; saveAll(); tampilkanHasilScan(true,kode,"SHQ",k.nama,"✅ Berhasil ditandai SUDAH DIAMBIL!"); renderAllAdmin(); }else{ let p=kuponPQ.find(k=>k.kode===kode); if(p){ if(p.status==='Sudah Diambil'){tampilkanHasilScan(false,kode,"PQ",p.nama,"Sudah pernah diambil!");return;} p.status='Sudah Diambil'; let penerima=dataPenerima.find(px=>px.id===p.penerimaId); if(penerima) penerima.status='Sudah'; saveAll(); tampilkanHasilScan(true,kode,"PQ",p.nama,"✅ Berhasil ditandai SUDAH DIAMBIL!"); renderAllAdmin(); }else tampilkanHasilScan(false,kode,"?","","❌ Kupon tidak ditemukan!"); } riwayatScan.unshift({id:Date.now(),waktu:new Date().toLocaleString('id-ID'),kode:kode,jenis:k?'SHQ':'PQ',nama:k?k.nama:(kuponPQ.find(k=>k.kode===kode)?.nama||''),status:'Sudah Diambil'}); if(riwayatScan.length>20) riwayatScan.pop(); saveAll(); renderRiwayatScan(); }
+function tampilkanHasilScan(s,kode,j,nama,p) { let r=document.getElementById('scanResult'); if(!r) return; r.style.display='block'; r.className=`scan-result ${s?'success':'error'}`; r.innerHTML=`<strong>${s?'✅ BERHASIL':'❌ GAGAL'}</strong><br>Kode: ${kode}<br>Nama: ${nama}<br>${p}`; setTimeout(()=>r.style.display='none',5000); }
+function cekKuponManual() { let k=document.getElementById('manualKuponCode').value.toUpperCase().trim(); if(!k){alert('Masukkan kode kupon!');return;} if(!k.match(/^(SHQ|PQ)-\d{3}$/i)){let r=document.getElementById('manualResult'); r.style.display='block'; r.className='scan-result error'; r.innerHTML='<strong>❌ Format salah!</strong><br>Format harus SHQ-001 atau PQ-001'; setTimeout(()=>r.style.display='none',3000); return;} prosesScanKupon(k); document.getElementById('manualKuponCode').value=''; }
+
+// ==================== FUNGSI QRIS ====================
+function generateQRISJamaah() { let c=document.getElementById('qrisContainerJamaah'); if(!c) return; c.innerHTML=''; if(typeof QRCode!=='undefined') try{new QRCode(c,{text:`BSI|${REKENING_BSI}|${NAMA_REKENING}|QURBAN`,width:200,height:200});}catch(e){c.innerHTML=`<p>QR Code: BSI ${REKENING_BSI}</p>`;} else c.innerHTML=`<p>QR Code: BSI ${REKENING_BSI}</p>`; }
+
+// ==================== RENDER TABEL ====================
+function renderAllAdmin(){renderTabelKambing(); renderTabelSapi(); renderTabelPenerima(); renderKuponSHQ(); renderKuponPQ(); renderKelompok(); renderDashboard(); renderLaporan(); renderPenerimaanTables(); renderRiwayatScan(); updateCharts();}
+function renderRiwayatScan() { let t=document.getElementById('riwayatScanBody'); if(!t) return; t.innerHTML=''; if(riwayatScan.length===0){t.innerHTML='</tr><td colspan="5" style="text-align:center">Belum ada riwayat scan<\/td><\/tr>';return;} for(let r of riwayatScan.slice(0,20)){let tr=t.insertRow(); tr.insertCell(0).innerHTML=`<span style="font-size:10px">${r.waktu}</span>`; tr.insertCell(1).innerHTML=`<strong>${r.kode}</strong>`; tr.insertCell(2).innerHTML=`<span class="badge badge-sudah">${r.jenis}</span>`; tr.insertCell(3).innerText=r.nama; tr.insertCell(4).innerHTML='<span class="badge badge-sudah">Sudah Diambil</span>';} }
+function clearRiwayatScan() { if(confirm('Hapus semua riwayat scan?')){riwayatScan=[]; saveAll(); renderRiwayatScan(); alert('Riwayat dihapus!');} }
+
+// Edit & Hapus Functions
+function editDataKambing(p) { document.getElementById('namaKambing').value=p.nama; document.getElementById('jenisKambing').value=p.jenis; document.getElementById('alamatKambing').value=p.alamat||''; document.getElementById('hpKambing').value=p.hp||''; document.getElementById('catatanKambing').value=p.catatan||''; let oid=p.id; let th=()=>{let n=document.getElementById('namaKambing').value.trim(),hp=document.getElementById('hpKambing').value.trim(); if(!n){alert('Nama harus diisi');return;} if(!hp){alert('Nomor HP harus diisi');return;} let i=dataKambing.findIndex(x=>x.id==oid); if(i!==-1){dataKambing[i]={...dataKambing[i],nama:n,alamat:document.getElementById('alamatKambing').value,hp:hp,catatan:document.getElementById('catatanKambing').value,jenis:document.getElementById('jenisKambing').value}; let kp=kuponSHQ.find(k=>k.pesertaId===oid); if(kp){kp.nama=n; kp.alamat=dataKambing[i].alamat; kp.hp=hp; kp.catatan=dataKambing[i].catatan;} saveAll(); renderAllAdmin(); alert('✅ Data berhasil diupdate!'); document.getElementById('resetKambing').click(); document.getElementById('simpanKambing').onclick=simpanKambingOriginal;}}; document.getElementById('simpanKambing').onclick=th; }
+function editDataSapi(p) { document.getElementById('namaSapi').value=p.nama; document.getElementById('alamatSapi').value=p.alamat||''; document.getElementById('hpSapi').value=p.hp||''; document.getElementById('catatanSapi').value=p.catatan||''; let oid=p.id; let th=()=>{let n=document.getElementById('namaSapi').value.trim(),hp=document.getElementById('hpSapi').value.trim(); if(!n){alert('Nama harus diisi');return;} if(!hp){alert('Nomor HP harus diisi');return;} let i=dataSapi.findIndex(x=>x.id==oid); if(i!==-1){dataSapi[i]={...dataSapi[i],nama:n,alamat:document.getElementById('alamatSapi').value,hp:hp,catatan:document.getElementById('catatanSapi').value}; let kp=kuponSHQ.find(k=>k.pesertaId===oid); if(kp){kp.nama=n; kp.alamat=dataSapi[i].alamat; kp.hp=hp; kp.catatan=dataSapi[i].catatan;} saveAll(); renderAllAdmin(); alert('✅ Data berhasil diupdate!'); document.getElementById('resetSapi').click(); document.getElementById('simpanSapi').onclick=simpanSapiOriginal;}}; document.getElementById('simpanSapi').onclick=th; }
+function editDataPenerima(p) { document.getElementById('namaPenerima').value=p.nama; document.getElementById('alamatPenerima').value=p.alamat||''; document.getElementById('hpPenerima').value=p.hp||''; document.getElementById('kategoriPenerima').value=p.kategori; document.getElementById('jatahPenerima').value=p.jatah; document.getElementById('catatanPenerima').value=p.catatan||''; let oid=p.id; let oh=simpanPenerimaOriginal; let th=()=>{let n=document.getElementById('namaPenerima').value.trim(); if(!n){alert('Nama harus diisi');return;} let i=dataPenerima.findIndex(x=>x.id==oid); if(i!==-1){dataPenerima[i]={...dataPenerima[i],nama:n,alamat:document.getElementById('alamatPenerima').value,hp:document.getElementById('hpPenerima').value,kategori:document.getElementById('kategoriPenerima').value,jatah:parseFloat(document.getElementById('jatahPenerima').value),catatan:document.getElementById('catatanPenerima').value}; let kp=kuponPQ.find(k=>k.penerimaId===oid); if(kp){kp.nama=n; kp.kategori=dataPenerima[i].kategori; kp.jatah=dataPenerima[i].jatah; kp.hp=dataPenerima[i].hp; kp.catatan=dataPenerima[i].catatan;} saveAll(); renderAllAdmin(); alert('✅ Data berhasil diupdate!'); document.getElementById('resetPenerima').click(); document.getElementById('simpanPenerima').onclick=oh;}}; document.getElementById('simpanPenerima').onclick=th; }
+function editCatatanKambing(id){let p=dataKambing.find(x=>x.id==id); if(p){let cb=prompt('Edit catatan:',p.catatan||''); if(cb!==null){p.catatan=cb; let kp=kuponSHQ.find(k=>k.pesertaId===id); if(kp)kp.catatan=cb; saveAll(); renderAllAdmin(); alert('✅ Catatan diperbarui!');}}}
+function editCatatanSapi(id){let p=dataSapi.find(x=>x.id==id); if(p){let cb=prompt('Edit catatan:',p.catatan||''); if(cb!==null){p.catatan=cb; let kp=kuponSHQ.find(k=>k.pesertaId===id); if(kp)kp.catatan=cb; saveAll(); renderAllAdmin(); alert('✅ Catatan diperbarui!');}}}
+function editCatatanPenerima(id){let p=dataPenerima.find(x=>x.id==id); if(p){let cb=prompt('Edit keterangan:',p.catatan||''); if(cb!==null){p.catatan=cb; let kp=kuponPQ.find(k=>k.penerimaId===id); if(kp)kp.catatan=cb; saveAll(); renderAllAdmin(); alert('✅ Keterangan diperbarui!');}}}
+function hapusDataKambing(id,n){if(confirm(`Hapus ${n}?`)){dataKambing=dataKambing.filter(x=>x.id!=id); kuponSHQ=kuponSHQ.filter(k=>k.pesertaId!=id); saveAll(); renderAllAdmin(); alert(`✅ Data ${n} dihapus!`);}}
+function hapusDataSapi(id,n){if(confirm(`Hapus ${n}?`)){dataSapi=dataSapi.filter(x=>x.id!=id); kuponSHQ=kuponSHQ.filter(k=>k.pesertaId!=id); saveAll(); renderAllAdmin(); alert(`✅ Data ${n} dihapus!`);}}
+function hapusDataPenerima(id,n){if(confirm(`Hapus ${n}?`)){dataPenerima=dataPenerima.filter(x=>x.id!=id); kuponPQ=kuponPQ.filter(k=>k.penerimaId!=id); saveAll(); renderAllAdmin(); alert(`✅ Data ${n} dihapus!`);}}
+function resetKelompok() { kelompokSapi=[]; saveAll(); renderKelompok(); alert('Kelompok sapi telah direset!'); }
+
+function renderKelompok() { let c=document.getElementById('daftarKelompok'); if(!c) return; c.innerHTML=''; if(kelompokSapi.length===0){c.innerHTML='<p style="padding:20px;text-align:center;">⚠️ Belum ada kelompok. Klik "AUTO GROUPING" untuk membentuk kelompok sapi (7 orang per ekor)</p>';return;} kelompokSapi.forEach((kel,i)=>{let d=document.createElement('div'); d.className='kelompok-card'; d.innerHTML=`<h3 style="color:#1565c0">🐃 KELOMPOK ${i+1}</h3><ul style="margin:0;padding-left:20px">${kel.anggota?.map(a=>{let ps=dataSapi.find(p=>p.nama===a.nama&&p.kode===a.kode); let kd=ps?kuponSHQ.find(k=>k.pesertaId===ps.id)?.kode||'':''; return `<li><strong>${a.kode}</strong> - ${a.nama} ${kd?`<span style="background:#2e7d32;color:white;padding:2px 8px;border-radius:15px;font-size:10px">🎫 ${kd}</span>`:''}</li>`;}).join('')||''}</ul><div style="margin-top:10px;background:#e8f5e9;padding:8px;border-radius:10px;text-align:center">📊 Jumlah: ${kel.anggota?.length||0}/7 orang</div>`; c.appendChild(d);});}
+function autoGrouping() { if(dataSapi.length===0){alert('⚠️ Belum ada peserta sapi!');return;} let s=[...dataSapi].sort((a,b)=>a.id-b.id); let nk=[]; for(let i=0;i<s.length;i+=7) nk.push({id:Date.now()+i,idKelompok:nk.length+1,anggota:s.slice(i,i+7).map(p=>({kode:p.kode,nama:p.nama}))}); kelompokSapi=nk; saveAll(); renderKelompok(); alert(`✅ AUTO GROUPING SELESAI!\n\n• Total Kelompok: ${kelompokSapi.length}\n• Total Peserta: ${s.length} orang`); }
+
+function renderTabelKambing() { let t=document.querySelector('#tabelKambing tbody'); if(!t) return; t.innerHTML=''; if(dataKambing.length===0){t.innerHTML='<tr><td colspan="8" style="text-align:center">Belum ada data sohibul kambing<\/td><\/tr>';return;} dataKambing.forEach(p=>{let kd=kuponSHQ.find(k=>k.pesertaId===p.id); let r=t.insertRow(); r.insertCell(0).innerHTML=`<strong>${p.kode}</strong>`; r.insertCell(1).innerHTML=`<span style="background:#ff9800;color:white;padding:2px 8px;border-radius:15px">${p.jenis}</span>`; r.insertCell(2).innerText=p.nama; r.insertCell(3).innerText=p.alamat||'-'; r.insertCell(4).innerText=p.hp||'-'; r.insertCell(5).innerHTML=kd?`<span style="background:#2e7d32;color:white;padding:4px 10px;border-radius:20px">${kd.kode}</span>`:'<span class="badge badge-belum">Belum dibuat</span>'; r.insertCell(6).innerHTML=`<div class="catatan-display" onclick="editCatatanKambing(${p.id})">📝 ${p.catatan||'Tambah catatan...'}</div>`; let a=r.insertCell(7); let be=document.createElement('button'); be.innerText='✏️'; be.className='btn-edit-sm'; be.onclick=()=>editDataKambing(p); let bh=document.createElement('button'); bh.innerText='🗑️'; bh.className='btn-delete-sm'; bh.onclick=()=>hapusDataKambing(p.id,p.nama); a.appendChild(be); a.appendChild(bh);}); }
+function renderTabelSapi() { let t=document.querySelector('#tabelSapi tbody'); if(!t) return; t.innerHTML=''; if(dataSapi.length===0){t.innerHTML='<tr><td colspan="7" style="text-align:center">Belum ada data sohibul sapi<\/td><\/tr>';return;} dataSapi.forEach(p=>{let kd=kuponSHQ.find(k=>k.pesertaId===p.id); let r=t.insertRow(); r.insertCell(0).innerHTML=`<strong>${p.kode}</strong>`; r.insertCell(1).innerText=p.nama; r.insertCell(2).innerText=p.alamat||'-'; r.insertCell(3).innerText=p.hp||'-'; r.insertCell(4).innerHTML=kd?`<span style="background:#2e7d32;color:white;padding:4px 10px;border-radius:20px">${kd.kode}</span>`:'<span class="badge badge-belum">Belum dibuat</span>'; r.insertCell(5).innerHTML=`<div class="catatan-display" onclick="editCatatanSapi(${p.id})">📝 ${p.catatan||'Tambah catatan...'}</div>`; let a=r.insertCell(6); let be=document.createElement('button'); be.innerText='✏️'; be.className='btn-edit-sm'; be.onclick=()=>editDataSapi(p); let bh=document.createElement('button'); bh.innerText='🗑️'; bh.className='btn-delete-sm'; bh.onclick=()=>hapusDataSapi(p.id,p.nama); a.appendChild(be); a.appendChild(bh);}); }
+function renderTabelPenerima() { let t=document.querySelector('#tabelPenerima tbody'); if(!t) return; t.innerHTML=''; if(dataPenerima.length===0){t.innerHTML='<tr><td colspan="10" style="text-align:center">Belum ada data penerima qurban<\/td><\/tr>';return;} let no=1; dataPenerima.forEach(p=>{let kd=kuponPQ.find(k=>k.penerimaId===p.id); let kc={Fakir:'badge-fakir',Miskin:'badge-miskin',Yatim:'badge-yatim',Dhuafa:'badge-dhuafa',Janda:'badge-janda',Lansia:'badge-lansia'}[p.kategori]||''; let r=t.insertRow(); r.insertCell(0).innerText=no++; r.insertCell(1).innerHTML=kd?`<span style="background:#ff9800;color:white;padding:4px 10px;border-radius:20px">${kd.kode}</span>`:'<span class="badge badge-belum">Belum dibuat</span>'; r.insertCell(2).innerText=p.nama; r.insertCell(3).innerText=p.alamat||'-'; r.insertCell(4).innerText=p.hp||'-'; r.insertCell(5).innerHTML=`<span class="badge ${kc}">${p.kategori}</span>`; r.insertCell(6).innerHTML=`<strong>${p.jatah} kg</strong>`; r.insertCell(7).innerHTML=p.status=='Sudah'?'<span class="badge badge-sudah">Sudah Diambil</span>':'<span class="badge badge-belum">Belum Diambil</span>'; r.insertCell(8).innerHTML=`<div class="catatan-display" onclick="editCatatanPenerima(${p.id})">📝 ${p.catatan||'Tambah...'}</div>`; let a=r.insertCell(9); let be=document.createElement('button'); be.innerText='✏️'; be.className='btn-edit-sm'; be.onclick=()=>editDataPenerima(p); let bh=document.createElement('button'); bh.innerText='🗑️'; bh.className='btn-delete-sm'; bh.onclick=()=>hapusDataPenerima(p.id,p.nama); a.appendChild(be); a.appendChild(bh);}); }
+function renderDashboard() { let td=[...dataKambing,...dataSapi].reduce((s,p)=>s+p.biaya,0); document.getElementById('statsArea').innerHTML=`<div class="stat-card"><h3>🐏 Sohibul Kambing</h3><div class="stat-number">${dataKambing.length}</div></div><div class="stat-card"><h3>🐃 Sohibul Sapi</h3><div class="stat-number">${dataSapi.length}</div></div><div class="stat-card"><h3>🎁 PQ</h3><div class="stat-number">${dataPenerima.length}</div></div><div class="stat-card"><h3>💰 Total Dana</h3><div class="stat-number">Rp ${td.toLocaleString()}</div></div><div class="stat-card"><h3>🎫 Kupon SHQ</h3><div class="stat-number">${kuponSHQ.length}</div></div><div class="stat-card"><h3>🍖 Kupon PQ</h3><div class="stat-number">${kuponPQ.length}</div></div>`; document.getElementById('totalDagingTelahDibagikan').innerHTML=hitungTotalDagingDibagikan()+' kg'; }
+function updateCharts() { let tk=dataKambing.length, ts=dataSapi.length; let cbk=tk*BIAYA_KAMBING, cbs=ts*BIAYA_SAPI; let cj=document.getElementById('chartJenis')?.getContext('2d'); if(cj&&chartJenis) chartJenis.destroy(); if(cj) chartJenis=new Chart(cj,{type:'pie',data:{labels:['Kambing','Sapi'],datasets:[{data:[tk,ts],backgroundColor:['#ff9800','#2e7d32']}]}}); let cb=document.getElementById('chartBiaya')?.getContext('2d'); if(cb&&chartBiaya) chartBiaya.destroy(); if(cb) chartBiaya=new Chart(cb,{type:'bar',data:{labels:['Kambing','Sapi'],datasets:[{label:'Total Biaya (Rp)',data:[cbk,cbs],backgroundColor:['#ff9800','#2e7d32'],borderRadius:10}]}}); }
+function renderLaporan() { 
+    let tk=dataKambing.length, ts=dataSapi.length; 
+    let cbk=tk*150000, cbs=ts*3700000, tot=cbk+cbs; 
+    let hw=hitungJumlahHewanQurban(); 
+    document.getElementById('jmlKambing').innerHTML=hw.kambing; 
+    document.getElementById('jmlSapiHewan').innerHTML=hw.sapi; 
+    let txt=`📊 LAPORAN QURBAN MASJID NURUL IHSAN\n================================\n📅 ${new Date().toLocaleDateString('id-ID')}\n\n🐏 JUMLAH HEWAN QURBAN:\n• Kambing/Domba: ${hw.kambing} ekor\n• Sapi: ${hw.sapi} ekor\n\n🐏 SOHIBUL KAMBING: ${tk} orang | Rp ${cbk.toLocaleString()}\n🐃 SOHIBUL SAPI: ${ts} orang | Rp ${cbs.toLocaleString()}\n💰 TOTAL DANA: Rp ${tot.toLocaleString()}\n🎫 KUPON SHQ: ${kuponSHQ.length} | 🍖 KUPON PQ: ${kuponPQ.length}\n🎁 PENERIMA: ${dataPenerima.length} orang\n🍖 TOTAL DAGING DIBAGIKAN: ${hitungTotalDagingDibagikan()} kg\n\n📍 Perumahan Pondok Timur Indah 1 Blok C, Bekasi\n--- DATA SINKRON SEMUA PERANGKAT ---`; 
+    document.getElementById('teksLaporan').innerText=txt; 
+    document.getElementById('laporanStats').innerHTML=`<div class="stat-card"><div class="stat-number">${tk}</div><div>Sohibul Kambing</div></div><div class="stat-card"><div class="stat-number">${ts}</div><div>Sohibul Sapi</div></div><div class="stat-card"><div class="stat-number">Rp ${cbk.toLocaleString()}</div><div>Total Kambing</div></div><div class="stat-card"><div class="stat-number">Rp ${cbs.toLocaleString()}</div><div>Total Sapi</div></div><div class="stat-card"><div class="stat-number">Rp ${tot.toLocaleString()}</div><div>Grand Total</div></div>`; 
+}
+function renderPenerimaanTables() { 
+    let t1=document.querySelector('#tabelSohibulPenerimaan tbody'); 
+    if(t1){t1.innerHTML=''; let semua=[]; for(let p of dataKambing) semua.push({...p,jenisTampil:p.jenis}); for(let p of dataSapi) semua.push({...p,jenisTampil:'Sapi'}); if(semua.length===0){t1.innerHTML='<tr><td colspan="9" style="text-align:center">Belum ada data sohibul qurban<\/td><\/tr>';}else{let no=1; for(let p of semua){let kd=kuponSHQ.find(k=>k.pesertaId===p.id); let r=t1.insertRow(); r.insertCell(0).innerText=no++; r.insertCell(1).innerHTML=`<strong>${p.kode}</strong>`; r.insertCell(2).innerHTML=`<strong>${p.nama}</strong>`; r.insertCell(3).innerHTML=`<span style="background:#ff9800;color:white;padding:2px 8px;border-radius:15px">${p.jenisTampil}</span>`; r.insertCell(4).innerText=p.alamat||'-'; r.insertCell(5).innerText=p.hp||'-'; r.insertCell(6).innerHTML=(p.catatan||'-').substring(0,40); r.insertCell(7).innerHTML=kd?`<span style="color:#2e7d32;font-weight:bold">${kd.kode}</span>`:'<span class="badge badge-belum">Belum dibuat</span>'; r.insertCell(8).innerHTML=!kd?'<span class="badge badge-belum">Belum Diambil</span>':(kd.status==="Sudah Diambil"?'<span class="badge badge-sudah">Sudah Diambil</span>':'<span class="badge badge-belum">Belum Diambil</span>');}}} 
+    let t2=document.querySelector('#tabelPenerimaPenerimaan tbody'); 
+    if(t2){t2.innerHTML=''; if(dataPenerima.length===0){t2.innerHTML='<tr><td colspan="9" style="text-align:center">Belum ada data penerima qurban<\/td><\/tr>';}else{let no=1; for(let p of dataPenerima){let kd=kuponPQ.find(k=>k.penerimaId===p.id); let kc={Fakir:'badge-fakir',Miskin:'badge-miskin',Yatim:'badge-yatim',Dhuafa:'badge-dhuafa',Janda:'badge-janda',Lansia:'badge-lansia'}[p.kategori]||''; let r=t2.insertRow(); r.insertCell(0).innerText=no++; r.insertCell(1).innerHTML=`<strong>${p.nama}</strong>`; r.insertCell(2).innerText=p.alamat||'-'; r.insertCell(3).innerText=p.hp||'-'; r.insertCell(4).innerHTML=`<span class="badge ${kc}">${p.kategori}</span>`; r.insertCell(5).innerHTML=`<strong>${p.jatah} kg</strong>`; r.insertCell(6).innerHTML=(p.catatan||'-').substring(0,40); r.insertCell(7).innerHTML=kd?`<span style="color:#e65100;font-weight:bold">${kd.kode}</span>`:'<span class="badge badge-belum">Belum dibuat</span>'; r.insertCell(8).innerHTML=!kd?'<span class="badge badge-belum">Belum Diambil</span>':(kd.status==="Sudah Diambil"?'<span class="badge badge-sudah">Sudah Diambil</span>':'<span class="badge badge-belum">Belum Diambil</span>');}}} }
+
+// ==================== COPY LAPORAN DAN WHATSAPP ====================
+function copyLaporanToClipboard() {
+    const laporanText = document.getElementById('teksLaporan').innerText;
+    if (!laporanText || laporanText === '') {
+        alert('Tidak ada data laporan untuk disalin!');
+        return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(laporanText).then(() => {
+            alert('✅ Laporan berhasil disalin ke clipboard! Sekarang bisa di-paste di WhatsApp atau aplikasi lain.');
+        }).catch(() => {
+            fallbackCopyLaporan(laporanText);
+        });
+    } else {
+        fallbackCopyLaporan(laporanText);
+    }
+}
+function fallbackCopyLaporan(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-9999px';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+        document.execCommand('copy');
+        alert('✅ Laporan berhasil disalin! (Metode alternatif)');
+    } catch (err) {
+        alert('❌ Gagal menyalin laporan. Silakan copy manual.');
+    }
+    document.body.removeChild(textarea);
+}
+function sendLaporanToWhatsApp() {
+    const laporanText = document.getElementById('teksLaporan').innerText;
+    if (!laporanText || laporanText === '') {
+        alert('Tidak ada data laporan untuk dikirim!');
+        return;
+    }
+    const pesanWA = `*📊 LAPORAN QURBAN MASJID NURUL IHSAN*\n\n${laporanText}`;
+    const encodedPesan = encodeURIComponent(pesanWA);
+    window.open(`https://wa.me/${NOMOR_ADMIN}?text=${encodedPesan}`, '_blank');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(laporanText).catch(() => {});
+    }
+    alert('📱 Akan membuka WhatsApp dengan laporan yang sudah disalin.\nKirim pesan ke grup atau admin yang dituju.');
+}
+
+// ==================== FUNGSI GAMBAR KUPON ====================
+async function buatGambarKupon(kupon, jenis) {
+    return new Promise((resolve) => {
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.top = '-9999px';
+        iframe.style.left = '-9999px';
+        iframe.style.width = '800px';
+        iframe.style.height = '1200px';
+        document.body.appendChild(iframe);
+        
+        let headerColor, borderColor, icon, titleText;
+        if (jenis === 'shq-kambing') {
+            headerColor = 'linear-gradient(135deg,#2e7d32,#1b5e20)';
+            borderColor = '#2e7d32';
+            icon = '🐏';
+            titleText = 'SOHIBUL KAMBING';
+        } else if (jenis === 'shq-sapi') {
+            headerColor = 'linear-gradient(135deg,#1565c0,#0d47a1)';
+            borderColor = '#1565c0';
+            icon = '🐃';
+            titleText = 'SOHIBUL SAPI';
+        } else {
+            headerColor = 'linear-gradient(135deg,#ff9800,#e65100)';
+            borderColor = '#ff9800';
+            icon = '🍖';
+            titleText = 'PENERIMA QURBAN (MUSTAHIK)';
+        }
+        
+        let qurbanHewan = '';
+        let jenisHewanText = '';
+        if (jenis === 'shq-kambing' || jenis === 'shq-sapi') {
+            qurbanHewan = getQurbanHewanText(kupon.jenis, kupon.pesertaId);
+            jenisHewanText = kupon.jenis === 'kambing' ? 'Kambing/Domba' : 'Sapi';
+        }
+        
+        let catatan = kupon.catatan && kupon.catatan !== '-' ? kupon.catatan.toUpperCase() : '-';
+        
+        const htmlContent = `<!DOCTYPE html>
+        <html>
+        <head><meta charset="UTF-8"><title>Kupon ${kupon.kode}</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; padding: 15px; background: #f5f5f5; }
+            .kupon { max-width: 500px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden; }
+            .kupon-header { background: ${headerColor}; color: white; padding: 15px; text-align: center; }
+            .kupon-header h1 { margin: 0; font-size: 20px; }
+            .kupon-header p { margin: 5px 0 0; font-size: 10px; }
+            .kupon-body { padding: 20px; }
+            .kupon-code { background: #f0f7f0; border: 2px dashed ${borderColor}; border-radius: 12px; padding: 12px; text-align: center; margin-bottom: 20px; }
+            .kupon-code .label { font-size: 10px; color: #666; }
+            .kupon-code .code { font-size: 28px; font-weight: bold; font-family: monospace; color: ${borderColor}; word-break: break-word; }
+            .info-row { display: flex; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap; }
+            .info-label { width: 100px; font-weight: bold; color: #555; font-size: 12px; }
+            .info-value { flex: 1; color: #333; font-weight: 500; font-size: 12px; word-break: break-word; }
+            .catatan-box { background: #fff3e0; border-radius: 10px; padding: 12px; margin: 15px 0; border-left: 4px solid ${borderColor}; }
+            .pengambilan-box { background: #e3f2fd; border-radius: 10px; padding: 12px; margin: 15px 0; text-align: center; }
+            .pengambilan-box .date { font-size: 16px; font-weight: bold; color: #1565c0; }
+            .footer { text-align: center; padding: 12px; background: #f5f5f5; font-size: 10px; color: #999; }
+        </style>
+        </head>
+        <body>
+            <div class="kupon">
+                <div class="kupon-header"><h1>★ KUPON ${titleText} ★</h1><p>MASJID NURUL IHSAN - 1447 H / 2026 M</p></div>
+                <div class="kupon-body">
+                    <div class="kupon-code"><div class="label">KODE KUPON</div><div class="code">${icon} ${kupon.kode}</div></div>
+                    <div class="info-row"><div class="info-label">Nama</div><div class="info-value">${kupon.nama.toUpperCase()}</div></div>
+                    ${jenis === 'shq-kambing' || jenis === 'shq-sapi' ? `
+                    <div class="info-row"><div class="info-label">Jenis Qurban</div><div class="info-value">${jenisHewanText}</div></div>
+                    <div class="info-row"><div class="info-label">Qurban Hewan</div><div class="info-value">${qurbanHewan}</div></div>
+                    ` : `
+                    <div class="info-row"><div class="info-label">Kategori</div><div class="info-value">${kupon.kategori}</div></div>
+                    <div class="info-row"><div class="info-label">Jatah Daging</div><div class="info-value">${kupon.jatah} kg</div></div>
+                    `}
+                    <div class="info-row"><div class="info-label">Waktu Daftar</div><div class="info-value">${kupon.waktuDaftar || '-'}</div></div>
+                    <div class="catatan-box"><div class="label">📝 CATATAN</div><div class="info-value">${catatan}</div></div>
+                    <div class="pengambilan-box"><div class="label">📅 WAKTU PENGAMBILAN</div><div class="date">27 MEI 2026</div><div style="font-size: 11px; margin-top: 5px;">Setelah Shalat Ashar (15.30 - selesai)</div></div>
+                </div>
+                <div class="footer">✓ Kupon ini harus dibawa saat pengambilan daging qurban ✓</div>
+            </div>
+        </body>
+        </html>`;
+        
+        iframe.srcdoc = htmlContent;
+        iframe.onload = () => {
+            setTimeout(() => {
+                try {
+                    const doc = iframe.contentDocument || iframe.contentWindow.document;
+                    const element = doc.querySelector('.kupon');
+                    if (element && typeof html2canvas !== 'undefined') {
+                        html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false }).then(canvas => {
+                            canvas.toBlob(blob => {
+                                document.body.removeChild(iframe);
+                                resolve(blob);
+                            }, 'image/png');
+                        }).catch(() => {
+                            document.body.removeChild(iframe);
+                            resolve(null);
+                        });
+                    } else {
+                        document.body.removeChild(iframe);
+                        resolve(null);
+                    }
+                } catch(e) {
+                    document.body.removeChild(iframe);
+                    resolve(null);
+                }
+            }, 500);
+        };
+    });
+}
+async function shareKuponViaGambar(kupon, jenis) {
+    if (typeof html2canvas !== 'undefined') {
+        try {
+            const blob = await buatGambarKupon(kupon, jenis);
+            if (blob) {
+                const file = new File([blob], `${kupon.kode}.png`, { type: 'image/png' });
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({ title: `Kupon ${kupon.kode}`, files: [file] });
+                    alert('✅ Gambar kupon berhasil dibagikan!');
+                    return;
+                } else {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${kupon.kode}.png`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    alert('📸 Gambar kupon telah didownload. Silakan kirim gambar tersebut ke WhatsApp penerima.');
+                    return;
+                }
+            }
+        } catch(e) { console.log(e); }
+    }
+    if (jenis === 'shq-kambing' || jenis === 'shq-sapi') {
+        cetakKuponSHQ(kupon);
+    } else {
+        cetakKuponPQ(kupon);
+    }
+    alert('🖨️ Kupon akan dibuka di jendela baru. Silakan screenshot dan kirim ke penerima.');
+}
+
+// ==================== KUPON DISPLAY ====================
+function renderKuponSHQ() { 
+    let c=document.getElementById('daftarKuponSHQ'); 
+    if(!c) return; 
+    c.innerHTML=''; 
+    if(kuponSHQ.length===0){c.innerHTML='<p style="text-align:center;padding:20px;">Belum ada kupon SHQ.</p>';return;} 
+    kuponSHQ.forEach(k=>{
+        let d=document.createElement('div'); 
+        d.className=`kupon-card ${k.jenis==='kambing'?'kupon-shq-kambing':'kupon-shq-sapi'}`; 
+        d.innerHTML=`<div class="kupon-code">${k.jenis==='kambing'?'🐏':'🐃'} ${k.kode}</div><div><strong>${k.nama}</strong></div><div>Jenis: ${k.jenis=='kambing'?'Kambing/Domba':'Sapi'}</div><div>Qurban: ${getQurbanHewanText(k.jenis,k.pesertaId)}</div><div>HP: ${k.hp||'-'}</div><div>Waktu: ${k.waktuDaftar||'-'}</div><div class="catatan-display" onclick="editCatatanKuponSHQ(${k.id})">📝 ${k.catatan||'-'}</div><div>Status: <span class="badge ${k.status==='Sudah Diambil'?'badge-sudah':'badge-belum'}">${k.status}</span></div><div style="margin-top:10px;display:flex;gap:5px;flex-wrap:wrap"><button class="cetakSHQBtn" data-id="${k.id}" style="background:#ff9800;color:white;padding:8px 12px;border-radius:20px">🖨️ Cetak</button><button class="waSHQBtn" data-id="${k.id}" style="background:#25D366;color:white;padding:8px 12px;border-radius:20px">📱 WA</button><button class="gambarSHQBtn" data-id="${k.id}" style="background:#2196f3;color:white;padding:8px 12px;border-radius:20px">🖼️ Gambar</button><button class="hapusSHQBtn" data-id="${k.id}" style="background:#d32f2f;color:white;padding:8px 12px;border-radius:20px">🗑️ Hapus</button></div>`; 
+        c.appendChild(d);
+    }); 
+    document.querySelectorAll('.cetakSHQBtn').forEach(btn=>{btn.onclick=()=>{let k=kuponSHQ.find(x=>x.id==parseInt(btn.dataset.id)); if(k) cetakKuponSHQ(k);};}); 
+    document.querySelectorAll('.waSHQBtn').forEach(btn=>{btn.onclick=()=>{let k=kuponSHQ.find(x=>x.id==parseInt(btn.dataset.id)); if(k) kirimKuponViaWA(k);};});
+    document.querySelectorAll('.gambarSHQBtn').forEach(btn=>{btn.onclick=async()=>{let k=kuponSHQ.find(x=>x.id==parseInt(btn.dataset.id)); if(k) { let jenis = k.jenis==='kambing' ? 'shq-kambing' : 'shq-sapi'; await shareKuponViaGambar(k, jenis); } };});
+    document.querySelectorAll('.hapusSHQBtn').forEach(btn=>{btn.onclick=()=>{if(confirm('Hapus kupon?')){kuponSHQ=kuponSHQ.filter(x=>x.id!=parseInt(btn.dataset.id)); saveAll(); renderAllAdmin();}};}); 
+}
+function renderKuponPQ() { 
+    let c=document.getElementById('daftarKuponPQ'); 
+    if(!c) return; 
+    c.innerHTML=''; 
+    if(kuponPQ.length===0){c.innerHTML='<p style="text-align:center;padding:20px;">Belum ada kupon PQ.</p>';return;} 
+    kuponPQ.forEach(k=>{
+        let d=document.createElement('div'); 
+        d.className='kupon-card kupon-pq'; 
+        d.innerHTML=`<div class="kupon-code">🍖 ${k.kode}</div><div><strong>${k.nama}</strong></div><div>Kategori: ${k.kategori}</div><div>Jatah: ${k.jatah} kg</div><div>HP: ${k.hp||'-'}</div><div>Waktu: ${k.waktuDaftar||'-'}</div><div class="catatan-display" onclick="editCatatanKuponPQ(${k.id})">📝 ${k.catatan||'-'}</div><div>Status: <span class="badge ${k.status==='Sudah Diambil'?'badge-sudah':'badge-belum'}">${k.status}</span></div><div style="margin-top:10px;display:flex;gap:5px;flex-wrap:wrap"><button class="cetakPQBtn" data-id="${k.id}" style="background:#ff9800;color:white;padding:8px 12px;border-radius:20px">🖨️ Cetak</button><button class="waPQBtn" data-id="${k.id}" style="background:#25D366;color:white;padding:8px 12px;border-radius:20px">📱 WA</button><button class="gambarPQBtn" data-id="${k.id}" style="background:#2196f3;color:white;padding:8px 12px;border-radius:20px">🖼️ Gambar</button><button class="hapusPQBtn" data-id="${k.id}" style="background:#d32f2f;color:white;padding:8px 12px;border-radius:20px">🗑️ Hapus</button></div>`; 
+        c.appendChild(d);
+    }); 
+    document.querySelectorAll('.cetakPQBtn').forEach(btn=>{btn.onclick=()=>{let k=kuponPQ.find(x=>x.id==parseInt(btn.dataset.id)); if(k) cetakKuponPQ(k);};}); 
+    document.querySelectorAll('.waPQBtn').forEach(btn=>{btn.onclick=()=>{let k=kuponPQ.find(x=>x.id==parseInt(btn.dataset.id)); if(k) kirimKuponPQViaWA(k);};});
+    document.querySelectorAll('.gambarPQBtn').forEach(btn=>{btn.onclick=async()=>{let k=kuponPQ.find(x=>x.id==parseInt(btn.dataset.id)); if(k) await shareKuponViaGambar(k, 'pq');};});
+    document.querySelectorAll('.hapusPQBtn').forEach(btn=>{btn.onclick=()=>{if(confirm('Hapus kupon?')){kuponPQ=kuponPQ.filter(x=>x.id!=parseInt(btn.dataset.id)); saveAll(); renderAllAdmin();}};}); 
+}
+function editCatatanKuponSHQ(id){let k=kuponSHQ.find(x=>x.id==id); if(k){let cb=prompt('Edit catatan kupon:',k.catatan||''); if(cb!==null){k.catatan=cb; let p=[...dataKambing,...dataSapi].find(px=>px.id==k.pesertaId); if(p)p.catatan=cb; saveAll(); renderAllAdmin(); alert('✅ Catatan kupon diperbarui!');}}}
+function editCatatanKuponPQ(id){let k=kuponPQ.find(x=>x.id==id); if(k){let cb=prompt('Edit catatan kupon:',k.catatan||''); if(cb!==null){k.catatan=cb; let p=dataPenerima.find(px=>px.id==k.penerimaId); if(p)p.catatan=cb; saveAll(); renderAllAdmin(); alert('✅ Catatan kupon diperbarui!');}}}
+function kirimKuponViaWA(k){if(!k.hp||k.hp===''){alert(`❌ Nomor WA ${k.nama} tidak tersedia!`);return;} let hp=k.hp.replace(/\D/g,''); if(!hp.startsWith('62')) hp=hp.startsWith('0')?'62'+hp.substring(1):'62'+hp; let qh=getQurbanHewanText(k.jenis,k.pesertaId); let pesan=`*🕌 KUPON SOHIBUL QURBAN (SHQ)*\n\n*Kode Kupon:* ${k.kode}\n*Nama:* ${k.nama.toUpperCase()}\n*Qurban Hewan:* ${qh}\n\n*📋 Catatan:*\n${k.catatan||'-'}\n\n*Informasi Pengambilan:*\n📍 Lokasi: Masjid Nurul Ihsan\nPerumahan Pondok Timur Indah 1 Blok C\nJl. Titiran Raya RT 004/004\nKel. Mustika Jaya, Kec. Mustika Jaya\nKota Bekasi, Jawa Barat 17158\n\n*📅 Waktu Pengambilan:*\n27 MEI 2026 (hari raya Idul Adha 1447 H)\nSetelah Shalat Ashar (15.30 - selesai)\n\n*⚠️ Mohon menunjukkan kupon/pesan ini kepada panitia saat pengambilan daging qurban.*\n\n--- MASJID NURUL IHSAN ---`; window.open(`https://wa.me/${hp}?text=${encodeURIComponent(pesan)}`,'_blank');}
+function kirimKuponPQViaWA(k){if(!k.hp||k.hp===''){alert(`❌ Nomor WA ${k.nama} tidak tersedia!`);return;} let hp=k.hp.replace(/\D/g,''); if(!hp.startsWith('62')) hp=hp.startsWith('0')?'62'+hp.substring(1):'62'+hp; let pesan=`*🍖 KUPON PENERIMA QURBAN (PQ)*\n\n*Kode Kupon:* ${k.kode}\n*Nama:* ${k.nama}\n*Kategori:* ${k.kategori}\n*Jatah Daging:* ${k.jatah} kg\n\n*📋 Catatan:*\n${k.catatan||'-'}\n\n*Informasi Pengambilan:*\n📍 Masjid Nurul Ihsan, Perumahan Pondok Timur Indah 1 Blok C, Bekasi\n\n*📅 Waktu Pengambilan:*\n27 MEI 2026 (Idul Adha) setelah Ashar\n\n*⚠️ Mohon menunjukkan kupon/pesan ini kepada panitia saat pengambilan daging qurban*\n\n--- MASJID NURUL IHSAN ---`; window.open(`https://wa.me/${hp}?text=${encodeURIComponent(pesan)}`,'_blank');}
+function cetakKuponSHQ(k){let qh=getQurbanHewanText(k.jenis,k.pesertaId); let ct=k.catatan&&k.catatan!=='-'?k.catatan.toUpperCase():'-'; let wh=k.jenis==='kambing'?'linear-gradient(135deg,#2e7d32,#1b5e20)':'linear-gradient(135deg,#1565c0,#0d47a1)'; let wk=k.jenis==='kambing'?'#2e7d32':'#1565c0'; let ik=k.jenis==='kambing'?'🐏':'🐃'; let jt=k.jenis==='kambing'?'SOHIBUL KAMBING':'SOHIBUL SAPI'; let w=window.open('','_blank'); w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Kupon ${k.kode}</title><style>body{font-family:Arial;padding:15px}.kupon{max-width:500px;margin:0 auto;background:white;border-radius:20px}.kupon-header{background:${wh};color:white;padding:15px;text-align:center}.kupon-body{padding:20px}.kupon-code{background:#f0f7f0;border:2px dashed ${wk};border-radius:12px;padding:12px;text-align:center;margin-bottom:20px}.kupon-code .code{font-size:28px;font-weight:bold;color:${wk}}.info-row{display:flex;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #ddd}.info-label{width:100px;font-weight:bold}.catatan-box{background:#fff3e0;border-radius:10px;padding:12px;margin:15px 0;border-left:4px solid ${wk}}.pengambilan-box{background:#e3f2fd;border-radius:10px;padding:12px;margin:15px 0;text-align:center}</style><body><div class="kupon"><div class="kupon-header"><h1>★ KUPON ${jt} ★</h1><p>MASJID NURUL IHSAN - 1447 H</p></div><div class="kupon-body"><div class="kupon-code"><div class="code">${ik} ${k.kode}</div></div><div class="info-row"><div class="info-label">Nama</div><div>${k.nama.toUpperCase()}</div></div><div class="info-row"><div class="info-label">Qurban</div><div>${qh}</div></div><div class="info-row"><div class="info-label">Waktu Daftar</div><div>${k.waktuDaftar||'-'}</div></div><div class="catatan-box"><strong>📝 CATATAN</strong><br>${ct}</div><div class="pengambilan-box"><strong>📅 WAKTU PENGAMBILAN</strong><br><span style="font-size:18px;font-weight:bold">27 MEI 2026</span><br>Setelah Shalat Ashar (15.30 - selesai)</div></div><div class="footer" style="text-align:center;padding:12px;background:#f5f5f5">✓ Kupon ini harus dibawa saat pengambilan ✓</div></div><div style="text-align:center;margin-top:15px"><button onclick="window.print()" style="padding:10px 20px;background:#ff9800;border:none;border-radius:30px">🖨️ Cetak</button> <button onclick="window.close()" style="padding:10px 20px;background:#666;border:none;border-radius:30px">Tutup</button></div><script>window.print();<\/script></body></html>`); w.document.close();}
+function cetakKuponPQ(k){let ct=k.catatan&&k.catatan!=='-'?k.catatan.toUpperCase():'-'; let w=window.open('','_blank'); w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Kupon ${k.kode}</title><style>body{font-family:Arial;padding:15px}.kupon{max-width:500px;margin:0 auto;background:white;border-radius:20px}.kupon-header{background:linear-gradient(135deg,#ff9800,#e65100);color:white;padding:15px;text-align:center}.kupon-body{padding:20px}.kupon-code{background:#fff8e1;border:2px dashed #ff9800;border-radius:12px;padding:12px;text-align:center;margin-bottom:20px}.kupon-code .code{font-size:28px;font-weight:bold;color:#e65100}.info-row{display:flex;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #ddd}.info-label{width:100px;font-weight:bold}.catatan-box{background:#fff3e0;border-radius:10px;padding:12px;margin:15px 0;border-left:4px solid #ff9800}.pengambilan-box{background:#e3f2fd;border-radius:10px;padding:12px;margin:15px 0;text-align:center}</style><body><div class="kupon"><div class="kupon-header"><h1>★ KUPON PENERIMA QURBAN ★</h1><p>MASJID NURUL IHSAN - 1447 H</p></div><div class="kupon-body"><div class="kupon-code"><div class="code">🍖 ${k.kode}</div></div><div class="info-row"><div class="info-label">Nama</div><div>${k.nama.toUpperCase()}</div></div><div class="info-row"><div class="info-label">Kategori</div><div>${k.kategori}</div></div><div class="info-row"><div class="info-label">Jatah</div><div>${k.jatah} kg</div></div><div class="info-row"><div class="info-label">Waktu Daftar</div><div>${k.waktuDaftar||'-'}</div></div><div class="catatan-box"><strong>📝 CATATAN</strong><br>${ct}</div><div class="pengambilan-box"><strong>📅 WAKTU PENGAMBILAN</strong><br><span style="font-size:18px;font-weight:bold">27 MEI 2026</span><br>Setelah Shalat Ashar (15.30 - selesai)</div></div><div class="footer" style="text-align:center;padding:12px;background:#f5f5f5">✓ Kupon ini harus dibawa saat pengambilan ✓</div></div><div style="text-align:center;margin-top:15px"><button onclick="window.print()" style="padding:10px 20px;background:#ff9800;border:none;border-radius:30px">🖨️ Cetak</button> <button onclick="window.close()" style="padding:10px 20px;background:#666;border:none;border-radius:30px">Tutup</button></div><script>window.print();<\/script></body></html>`); w.document.close();}
+function cetakSemuaKuponSHQ(){if(kuponSHQ.length===0){alert('Tidak ada kupon');return;} let w=window.open('','_blank'); w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Semua Kupon SHQ</title><style>body{font-family:Arial;padding:15px}.kupon{max-width:500px;margin:20px auto;background:white;border-radius:20px;page-break-after:always}.kupon-header{background:linear-gradient(135deg,#2e7d32,#1b5e20);color:white;padding:15px;text-align:center}.kupon-body{padding:20px}.kupon-code{background:#f0f7f0;border:2px dashed #2e7d32;border-radius:12px;padding:12px;text-align:center;margin-bottom:20px}.kupon-code .code{font-size:28px;font-weight:bold;color:#2e7d32}.info-row{display:flex;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #ddd}.info-label{width:100px;font-weight:bold}.catatan-box{background:#fff3e0;border-radius:10px;padding:12px;margin:15px 0;border-left:4px solid #ff9800}.pengambilan-box{background:#e3f2fd;border-radius:10px;padding:12px;margin:15px 0;text-align:center}</style><body>`); for(let k of kuponSHQ){let ik=k.jenis==='kambing'?'🐏':'🐃'; let qh=getQurbanHewanText(k.jenis,k.pesertaId); let ct=k.catatan&&k.catatan!=='-'?k.catatan.toUpperCase():'-'; w.document.write(`<div class="kupon"><div class="kupon-header"><h1>★ KUPON SOHIBUL QURBAN ★</h1><p>MASJID NURUL IHSAN</p></div><div class="kupon-body"><div class="kupon-code"><div class="code">${ik} ${k.kode}</div></div><div class="info-row"><div class="info-label">Nama</div><div>${k.nama.toUpperCase()}</div></div><div class="info-row"><div class="info-label">Qurban</div><div>${qh}</div></div><div class="info-row"><div class="info-label">Waktu Daftar</div><div>${k.waktuDaftar||'-'}</div></div><div class="catatan-box"><strong>📝 CATATAN</strong><br>${ct}</div><div class="pengambilan-box"><strong>📅 WAKTU PENGAMBILAN</strong><br><span style="font-size:18px;font-weight:bold">27 MEI 2026</span><br>Setelah Ashar</div></div><div class="footer" style="text-align:center;padding:12px;background:#f5f5f5">✓ Kupon ini harus dibawa saat pengambilan ✓</div></div>`);} w.document.write(`<div style="text-align:center;margin-top:15px"><button onclick="window.print()" style="padding:10px 20px;background:#ff9800;border:none;border-radius:30px">🖨️ Cetak Semua</button> <button onclick="window.close()" style="padding:10px 20px;background:#666;border:none;border-radius:30px">Tutup</button></div><script>window.print();<\/script></body></html>`); w.document.close();}
+function cetakSemuaKuponPQ(){if(kuponPQ.length===0){alert('Tidak ada kupon');return;} let w=window.open('','_blank'); w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Semua Kupon PQ</title><style>body{font-family:Arial;padding:15px}.kupon{max-width:500px;margin:20px auto;background:white;border-radius:20px;page-break-after:always}.kupon-header{background:linear-gradient(135deg,#ff9800,#e65100);color:white;padding:15px;text-align:center}.kupon-body{padding:20px}.kupon-code{background:#fff8e1;border:2px dashed #ff9800;border-radius:12px;padding:12px;text-align:center;margin-bottom:20px}.kupon-code .code{font-size:28px;font-weight:bold;color:#e65100}.info-row{display:flex;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #ddd}.info-label{width:100px;font-weight:bold}.catatan-box{background:#fff3e0;border-radius:10px;padding:12px;margin:15px 0;border-left:4px solid #ff9800}.pengambilan-box{background:#e3f2fd;border-radius:10px;padding:12px;margin:15px 0;text-align:center}</style><body>`); for(let k of kuponPQ){let ct=k.catatan&&k.catatan!=='-'?k.catatan.toUpperCase():'-'; w.document.write(`<div class="kupon"><div class="kupon-header"><h1>★ KUPON PENERIMA QURBAN ★</h1><p>MASJID NURUL IHSAN</p></div><div class="kupon-body"><div class="kupon-code"><div class="code">🍖 ${k.kode}</div></div><div class="info-row"><div class="info-label">Nama</div><div>${k.nama.toUpperCase()}</div></div><div class="info-row"><div class="info-label">Kategori</div><div>${k.kategori}</div></div><div class="info-row"><div class="info-label">Jatah</div><div>${k.jatah} kg</div></div><div class="info-row"><div class="info-label">Waktu Daftar</div><div>${k.waktuDaftar||'-'}</div></div><div class="catatan-box"><strong>📝 CATATAN</strong><br>${ct}</div><div class="pengambilan-box"><strong>📅 WAKTU PENGAMBILAN</strong><br><span style="font-size:18px;font-weight:bold">27 MEI 2026</span><br>Setelah Ashar</div></div><div class="footer" style="text-align:center;padding:12px;background:#f5f5f5">✓ Kupon ini harus dibawa saat pengambilan ✓</div></div>`);} w.document.write(`<div style="text-align:center;margin-top:15px"><button onclick="window.print()" style="padding:10px 20px;background:#ff9800;border:none;border-radius:30px">🖨️ Cetak Semua</button> <button onclick="window.close()" style="padding:10px 20px;background:#666;border:none;border-radius:30px">Tutup</button></div><script>window.print();<\/script></body></html>`); w.document.close();}
+
+// ==================== BACKUP & RESTORE ====================
+function backupData(){let data={exportDate:new Date().toLocaleString('id-ID'),dataKambing,dataSapi,dataPenerima,kuponSHQ,kuponPQ,kelompokSapi,riwayatScan}; let str=JSON.stringify(data,null,2); let blob=new Blob([str],{type:'application/json'}); let url=URL.createObjectURL(blob); let a=document.createElement('a'); a.href=url; a.download=`backup_qurban_${new Date().toLocaleDateString('id-ID').replace(/\//g,'-')}.json`; a.click(); URL.revokeObjectURL(url); let s=document.getElementById('backupStatus'); s.style.display='block'; s.className='alert alert-success'; s.innerHTML='✅ Backup berhasil dibuat!'; setTimeout(()=>s.style.display='none',3000);}
+function restoreFromFile(file){let r=new FileReader(); r.onload=function(e){try{let imp=JSON.parse(e.target.result); let mode=confirm('Pilih mode:\n- OK: Ganti semua data (data Firebase akan diganti)\n- Cancel: Gabungkan (merge) dengan data Firebase'); if(mode){dataKambing=imp.dataKambing||[]; dataSapi=imp.dataSapi||[]; dataPenerima=imp.dataPenerima||[]; kuponSHQ=imp.kuponSHQ||[]; kuponPQ=imp.kuponPQ||[]; kelompokSapi=imp.kelompokSapi||[]; riwayatScan=imp.riwayatScan||[];}else{let sid=new Set(dataKambing.map(k=>k.id)); for(let i of imp.dataKambing||[])if(!sid.has(i.id))dataKambing.push(i); sid=new Set(dataSapi.map(k=>k.id)); for(let i of imp.dataSapi||[])if(!sid.has(i.id))dataSapi.push(i); sid=new Set(dataPenerima.map(k=>k.id)); for(let i of imp.dataPenerima||[])if(!sid.has(i.id))dataPenerima.push(i); sid=new Set(kuponSHQ.map(k=>k.id)); for(let i of imp.kuponSHQ||[])if(!sid.has(i.id))kuponSHQ.push(i); sid=new Set(kuponPQ.map(k=>k.id)); for(let i of imp.kuponPQ||[])if(!sid.has(i.id))kuponPQ.push(i); for(let i of imp.kelompokSapi||[])kelompokSapi.push(i); for(let i of imp.riwayatScan||[])if(!riwayatScan.some(r=>r.id===i.id))riwayatScan.push(i); riwayatScan.sort((a,b)=>b.id-a.id);} saveAll(); renderAllAdmin(); let s=document.getElementById('backupStatus'); s.style.display='block'; s.className='alert alert-success'; s.innerHTML='✅ Restore berhasil! Data sudah disinkronkan ke Firebase.'; setTimeout(()=>s.style.display='none',3000); alert('✅ Restore data berhasil! Data sudah tersimpan di cloud.');}catch(err){alert('❌ Gagal restore data. File tidak valid.');}}; r.readAsText(file);}
+function resetAllData(){if(confirm('⚠️ PERINGATAN! Hapus SEMUA data di Firebase?\n\nData akan hilang dari semua perangkat!\nData tidak bisa dikembalikan tanpa backup.')){if(confirm('Konfirmasi terakhir: Tekan OK untuk menghapus semua data dari cloud!')){dataKambing=[]; dataSapi=[]; dataPenerima=[]; kuponSHQ=[]; kuponPQ=[]; kelompokSapi=[]; riwayatScan=[]; saveAll(); renderAllAdmin(); alert('✅ Semua data telah direset dari cloud!');}}}
+
+// ==================== CRUD UTAMA ====================
+function simpanKambingOriginal(){let n=document.getElementById('namaKambing').value.trim(),hp=document.getElementById('hpKambing').value.trim(); if(!n){alert('❌ Nama harus diisi!');return;} if(!hp){alert('❌ Nomor HP harus diisi!');return;} let w=new Date().toLocaleString('id-ID'); let p={id:Date.now(),kode:getNextKodeKambing(),jenis:document.getElementById('jenisKambing').value,nama:n,alamat:document.getElementById('alamatKambing').value,hp:hp,biaya:150000,catatan:document.getElementById('catatanKambing').value,waktuDaftar:w}; dataKambing.push(p); let kb=buatKuponOtomatisSHQ(p,'kambing'); renderAllAdmin(); alert(`✅ Data tersimpan! Kupon SHQ: ${kb?kb.kode:'Cek di menu Kupon'}`); document.getElementById('resetKambing').click();}
+function simpanSapiOriginal(){let n=document.getElementById('namaSapi').value.trim(),hp=document.getElementById('hpSapi').value.trim(); if(!n){alert('❌ Nama harus diisi!');return;} if(!hp){alert('❌ Nomor HP harus diisi!');return;} let w=new Date().toLocaleString('id-ID'); let p={id:Date.now(),kode:getNextKodeSapi(),nama:n,alamat:document.getElementById('alamatSapi').value,hp:hp,biaya:3700000,catatan:document.getElementById('catatanSapi').value,waktuDaftar:w}; dataSapi.push(p); let kb=buatKuponOtomatisSHQ(p,'sapi'); renderAllAdmin(); alert(`✅ Data tersimpan! Kupon SHQ: ${kb?kb.kode:'Cek di menu Kupon'}`); document.getElementById('resetSapi').click();}
+function simpanPenerimaOriginal(){let n=document.getElementById('namaPenerima').value.trim(); if(!n){alert('Nama harus diisi');return;} let w=new Date().toLocaleString('id-ID'); let p={id:Date.now(),kode:getNextKodePenerima(),nama:n,alamat:document.getElementById('alamatPenerima').value,hp:document.getElementById('hpPenerima').value,kategori:document.getElementById('kategoriPenerima').value,jatah:parseFloat(document.getElementById('jatahPenerima').value),status:'Belum',catatan:document.getElementById('catatanPenerima').value,waktuDaftar:w}; dataPenerima.push(p); let kb=buatKuponOtomatisPQ(p); renderAllAdmin(); alert(`✅ Data tersimpan! Kupon PQ: ${kb?kb.kode:'Cek di menu Kupon'}`); document.getElementById('resetPenerima').click();}
+
+function simpanPendaftaranKeDatabase(){let j=document.getElementById('jenisQurbanPendaftar').value; let n=document.getElementById('namaPendaftar').value.trim(); let a=document.getElementById('alamatPendaftar').value.trim(); let hp=document.getElementById('hpPendaftar').value.trim(); let ct=document.getElementById('catatanPendaftar').value.trim(); if(!n){alert('❌ Nama harus diisi!');return false;} if(!hp){alert('❌ Nomor HP harus diisi!');return false;} let w=new Date().toLocaleString('id-ID'); let pb,kb=null; if(j==='kambing'){pb={id:Date.now(),kode:getNextKodeKambing(),jenis:'Kambing',nama:n,alamat:a,hp:hp,biaya:150000,catatan:ct,waktuDaftar:w}; dataKambing.push(pb); kb=buatKuponOtomatisSHQ(pb,'kambing');}else{pb={id:Date.now(),kode:getNextKodeSapi(),nama:n,alamat:a,hp:hp,biaya:3700000,catatan:ct,waktuDaftar:w}; dataSapi.push(pb); kb=buatKuponOtomatisSHQ(pb,'sapi'); autoGrouping();} renderAllAdmin(); return {peserta:pb,kupon:kb};}
+function konfirmasiWAJamaah(){let j=document.getElementById('jenisQurbanPendaftar').value; let n=document.getElementById('namaPendaftar').value.trim(); let hp=document.getElementById('hpPendaftar').value.trim(); let a=document.getElementById('alamatPendaftar').value.trim(); let ct=document.getElementById('catatanPendaftar').value.trim(); if(!n){alert('❌ Nama harus diisi!');return;} if(!hp){alert('❌ Nomor HP harus diisi!');return;} let hasil=simpanPendaftaranKeDatabase(); if(!hasil) return; let p=hasil.peserta, kb=hasil.kupon; let jh=getQurbanHewanText(j==='kambing'?'kambing':'sapi',p.id); let kd=kb?kb.kode:'Akan tersedia'; let pesan=''; if(j==='kambing'){pesan=`Assalamualaikum, saya ingin konfirmasi pendaftaran qurban.\nNama: ${n}\nNo HP: ${hp}\nAlamat: ${a||'-'}\nQurban hewan: ${jh}\nBiaya: Rp 150.000\nKode Kupon: ${kd}\nCatatan: ${ct||'-'}\nTerima kasih.`;}else{let u=getUrutanSapiUntukPeserta(p.id); let kl=getKelompokUntukPeserta(p.id); let ht=`Sapi (urunan ke ${u}/7 orang${kl?` kelompok ${kl}`:''})`; pesan=`Assalamualaikum, saya ingin konfirmasi pendaftaran qurban.\nNama: ${n}\nNo HP: ${hp}\nAlamat: ${a||'-'}\nQurban hewan: ${ht}\nBiaya: Rp 3.700.000\nKode Kupon: ${kd}\nCatatan: ${ct||'-'}\nTerima kasih.`;} window.open(`https://wa.me/${NOMOR_ADMIN}?text=${encodeURIComponent(pesan)}`,'_blank'); let nd=document.getElementById('notifikasiDaftar'); nd.innerHTML=`✅ PENDAFTARAN BERHASIL!<br>Kode Peserta: ${p.kode}<br>Kode Kupon: <strong>${kb?kb.kode:'Tersedia'}</strong><br>Data sudah tersimpan di cloud.`; nd.classList.remove('hidden'); setTimeout(()=>nd.classList.add('hidden'),8000); document.getElementById('namaPendaftar').value=''; document.getElementById('alamatPendaftar').value=''; document.getElementById('hpPendaftar').value=''; document.getElementById('catatanPendaftar').value='';}
+
+// ==================== MODE SWITCH ====================
+function showJamaahMode(){document.getElementById('adminMode').style.display='none'; document.getElementById('jamaahMode').style.display='block'; generateQRISJamaah();}
+function showAdminMode(){document.getElementById('jamaahMode').style.display='none'; document.getElementById('adminMode').style.display='block'; renderAllAdmin(); setTimeout(()=>startScanner(),500);}
+
+// ==================== EVENT LISTENERS ====================
+document.addEventListener('DOMContentLoaded',function(){
+    if(initFirebase()) loadFromFirebase();
+    
+    document.getElementById('adminBtn').onclick=()=>document.getElementById('passwordSection').classList.toggle('hidden');
+    document.getElementById('loginAdminBtn').onclick=()=>{if(document.getElementById('passwordInput').value===PASSWORD_ADMIN){document.getElementById('loginOverlay').style.display='none'; showAdminMode();}else alert('Password salah!'); document.getElementById('passwordInput').value=''; document.getElementById('passwordSection').classList.add('hidden');};
+    document.getElementById('daftarBtn').onclick=()=>{document.getElementById('loginOverlay').style.display='none'; showJamaahMode();};
+    document.getElementById('switchToAdminFromJamaah').onclick=()=>{document.getElementById('loginOverlay').style.display='flex'; document.getElementById('jamaahMode').style.display='none';};
+    document.getElementById('switchToJamaahFromAdmin').onclick=()=>{if(html5QrcodeScanner) html5QrcodeScanner.clear().catch(e=>{}); showJamaahMode();};
+    document.getElementById('btnKonfirmasiWAJamaah').onclick=konfirmasiWAJamaah;
+    document.getElementById('simpanKambing').onclick=simpanKambingOriginal;
+    document.getElementById('simpanSapi').onclick=simpanSapiOriginal;
+    document.getElementById('simpanPenerima').onclick=simpanPenerimaOriginal;
+    document.getElementById('btnCekKupon').onclick=cekKuponManual;
+    document.getElementById('clearRiwayatBtn').onclick=clearRiwayatScan;
+    document.getElementById('autoGroupBtn').onclick=autoGrouping;
+    document.getElementById('resetKelompokBtn').onclick=resetKelompok;
+    document.getElementById('cetakSemuaSHQ').onclick=cetakSemuaKuponSHQ;
+    document.getElementById('cetakSemuaPQ').onclick=cetakSemuaKuponPQ;
+    document.getElementById('resetKambing').onclick=()=>{document.getElementById('namaKambing').value=''; document.getElementById('alamatKambing').value=''; document.getElementById('hpKambing').value=''; document.getElementById('catatanKambing').value=''; document.getElementById('simpanKambing').onclick=simpanKambingOriginal;};
+    document.getElementById('resetSapi').onclick=()=>{document.getElementById('namaSapi').value=''; document.getElementById('alamatSapi').value=''; document.getElementById('hpSapi').value=''; document.getElementById('catatanSapi').value=''; document.getElementById('simpanSapi').onclick=simpanSapiOriginal;};
+    document.getElementById('resetPenerima').onclick=()=>{document.getElementById('namaPenerima').value=''; document.getElementById('alamatPenerima').value=''; document.getElementById('hpPenerima').value=''; document.getElementById('catatanPenerima').value=''; document.getElementById('jatahPenerima').value='2'; document.getElementById('kategoriPenerima').value='Fakir'; document.getElementById('simpanPenerima').onclick=simpanPenerimaOriginal;};
+    document.getElementById('backupDataBtn').onclick=backupData;
+    document.getElementById('restoreDataBtn').onclick=()=>{let fi=document.getElementById('restoreFileInput'); if(!fi.files||!fi.files[0]){alert('Pilih file backup!');return;} restoreFromFile(fi.files[0]); fi.value='';};
+    document.getElementById('resetAllDataBtn').onclick=resetAllData;
+    document.getElementById('copyLaporanBtn').onclick=copyLaporanToClipboard;
+    document.getElementById('waLaporanBtn').onclick=sendLaporanToWhatsApp;
+    
+    document.querySelectorAll('#adminMode .nav-btn').forEach(btn=>{btn.onclick=()=>{document.querySelectorAll('#adminMode .nav-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); document.querySelectorAll('#adminMode .page').forEach(p=>p.classList.remove('active')); document.getElementById(btn.dataset.page).classList.add('active'); if(btn.dataset.page==='kelompok') renderKelompok(); if(btn.dataset.page==='kupon') renderKuponSHQ(); if(btn.dataset.page==='kuponpq') renderKuponPQ(); if(btn.dataset.page==='daftarpenerimaan') renderPenerimaanTables(); if(btn.dataset.page==='scan'){renderRiwayatScan(); setTimeout(()=>startScanner(),300);}};});});
+
+    window.editCatatanKambing=editCatatanKambing; window.editCatatanSapi=editCatatanSapi; window.editCatatanPenerima=editCatatanPenerima;
+    window.editCatatanKuponSHQ=editCatatanKuponSHQ; window.editCatatanKuponPQ=editCatatanKuponPQ;
+    window.kirimKuponViaWA=kirimKuponViaWA; window.kirimKuponPQViaWA=kirimKuponPQViaWA;
+});
+</script>
+</body>
+</html>
