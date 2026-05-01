@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0d4715">
+    <title>Sistem Qurban - Masjid Nurul Ihsan</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f0f7f0; padding: 10px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 5px 25px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #0d4715, #1a5c23); color: white; padding: 20px; text-align: center; }
+        .nav { display: flex; flex-wrap: wrap; background: #2e7d32; gap: 3px; padding: 10px; justify-content: center; }
+        .nav-btn { background: #c8e6c9; border: none; padding: 10px 12px; border-radius: 30px; cursor: pointer; font-weight: bold; color: #1a472a; }
+        .nav-btn.active { background: #ff9800; color: white; }
+        .page { display: none; padding: 15px; }
+        .page.active { display: block; }
+        .form-section { background: #fef9e6; padding: 15px; border-radius: 20px; margin-bottom: 20px; border: 1px solid #ffd966; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { font-weight: bold; color: #2e7d32; display: block; margin-bottom: 5px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ccc; }
+        button { padding: 10px 16px; border-radius: 30px; border: none; cursor: pointer; font-weight: bold; margin: 5px; }
+        .btn-primary { background: #2e7d32; color: white; }
+        .btn-warning { background: #ff9800; color: white; }
+        .btn-danger { background: #d32f2f; color: white; }
+        .btn-wa { background: #25D366; color: white; }
+        .card-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: #fff8e1; border-radius: 15px; padding: 15px; flex: 1; text-align: center; border-bottom: 4px solid #ff9800; }
+        .stat-number { font-size: 24px; font-weight: bold; color: #2e7d32; }
+        .kupon-card { background: white; padding: 15px; border-radius: 15px; margin: 10px; border-left: 8px solid #2e7d32; }
+        .login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .login-box { background: white; padding: 30px; border-radius: 25px; width: 90%; max-width: 400px; text-align: center; }
+        .hidden { display: none; }
+        .footer { text-align: center; padding: 12px; background: #1a472a; color: white; font-size: 11px; }
+        .rekening-box { background: #fff3e0; padding: 12px; border-radius: 15px; margin: 15px; text-align: center; }
+        .info-box { background: #e3f2fd; padding: 12px; border-radius: 15px; margin: 15px; border-left: 5px solid #2196f3; }
+        .alert { padding: 12px; border-radius: 10px; margin: 15px; font-size: 12px; }
+        .alert-success { background: #d4edda; color: #155724; }
+        .alert-warning { background: #fff3cd; color: #856404; }
+        .sync-status { position: fixed; bottom: 20px; right: 20px; background: #2e7d32; color: white; padding: 8px 15px; border-radius: 30px; font-size: 11px; z-index: 1000; display: flex; align-items: center; gap: 8px; }
+        .sync-dot { width: 10px; height: 10px; border-radius: 50%; background: #4caf50; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #c8e6c9; padding: 8px; text-align: left; }
+        th { background: #2e7d32; color: white; }
+        .table-responsive { overflow-x: auto; margin: 15px 0; }
+        @media (min-width: 768px) { .nav-btn { padding: 12px 20px; } .page { padding: 25px; } }
+    </style>
+</head>
+<body>
+
+<div id="loginOverlay" class="login-overlay">
+    <div class="login-box">
+        <h2>🕌 PENDAFTARAN QURBAN</h2>
+        <p style="margin:10px 0; color:#666">Masjid Nurul Ihsan<br>1447 H / 2026 M</p>
+        <button id="adminBtn" style="background:#1a472a; color:white; width:100%; padding:12px; border-radius:30px; margin:5px 0">👑 ADMIN</button>
+        <button id="daftarBtn" class="btn-warning" style="width:100%; padding:12px; border-radius:30px; margin:5px 0">📝 DAFTAR</button>
+        <div id="passwordSection" class="hidden" style="margin-top:15px; border-top:1px solid #eee; padding-top:15px">
+            <input type="password" id="passwordInput" placeholder="Kode Akses" style="width:100%; padding:10px; border-radius:30px;">
+            <button id="loginAdminBtn" class="btn-primary" style="width:100%; margin-top:10px">🔐 VERIFIKASI</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODE JAMAAH -->
+<div id="jamaahMode" style="display:none">
+<div class="container">
+    <div class="header">
+        <h1>🕌 PENDAFTARAN QURBAN ONLINE</h1>
+        <p>Masjid Nurul Ihsan - 1447 H / 2026 M</p>
+        <div class="role-badge">📝 FORM PENDAFTARAN JAMAAH</div>
+        <button id="switchToAdminFromJamaah" style="margin-top:10px; background:#1a472a; color:white; border:none; padding:5px 15px; border-radius:20px; cursor:pointer">👑 ADMIN</button>
+    </div>
+    <div style="padding:15px">
+        <div class="info-box">
+            <p>📍 Perumahan Pondok Timur Indah 1 Blok C, Jl. Titiran Raya RT 004/004</p>
+            <p>Kel. Mustika Jaya, Kec. Mustika Jaya, Kota Bekasi, Jawa Barat 17158</p>
+        </div>
+        <div class="rekening-box">
+            <div style="font-size:18px; font-weight:bold; color:#ff9800">🏦 BANK SYARIAH INDONESIA (BSI)</div>
+            <div style="font-size:20px; font-weight:bold; letter-spacing:2px; margin:10px 0">7251 0530 08</div>
+            <div>a.n. <strong>MASJID NURUL IHSAN</strong></div>
+        </div>
+        <div class="form-section">
+            <h3 style="margin-bottom:15px">🐏 PENDAFTARAN</h3>
+            <div class="form-group"><label>Jenis Qurban</label><select id="jenisQurbanPendaftar"><option value="kambing">🐏 Kambing/Domba - Rp 150.000</option><option value="sapi">🐃 Sapi - Rp 3.700.000</option></select></div>
+            <div class="form-group"><label>Nama Lengkap</label><input type="text" id="namaPendaftar" placeholder="Nama lengkap"></div>
+            <div class="form-group"><label>Alamat</label><input type="text" id="alamatPendaftar" placeholder="Alamat lengkap"></div>
+            <div class="form-group"><label>No HP / WhatsApp</label><input type="tel" id="hpPendaftar" placeholder="Nomor HP aktif"></div>
+            <div class="form-group"><label>Catatan</label><textarea id="catatanPendaftar" rows="3" placeholder="Contoh: minta bagian paha, kirim dokumentasi"></textarea></div>
+            <button id="btnKonfirmasiWAJamaah" class="btn-wa" style="width:100%; padding:12px;">📱 KONFIRMASI & DAFTAR</button>
+            <div id="notifikasiDaftar" class="alert alert-success hidden" style="margin-top:15px"></div>
+        </div>
+        <div class="alert alert-warning"><strong>⚠️ PENTING:</strong><br>Transfer ke rekening BSI, lalu klik tombol WhatsApp untuk konfirmasi. Kupon akan langsung dibuat.</div>
+    </div>
+    <div class="footer">© SISTEM QURBAN - MASJID NURUL IHSAN</div>
+</div>
+</div>
+
+<!-- MODE ADMIN -->
+<div id="adminMode" style="display:none">
+<div class="container">
+    <div class="header">
+        <h1>🕌 SISTEM MANAJEMEN QURBAN</h1>
+        <p>Masjid Nurul Ihsan - 1447 H / 2026 M</p>
+        <button id="switchToJamaahFromAdmin" style="margin-top:10px; background:#4caf50; color:white; border:none; padding:5px 15px; border-radius:20px">📝 BUKA PENDAFTARAN</button>
+    </div>
+    <div class="nav">
+        <button class="nav-btn active" data-page="dashboard">📊 DASHBOARD</button>
+        <button class="nav-btn" data-page="kambing">🐏 KAMBING</button>
+        <button class="nav-btn" data-page="sapi">🐃 SAPI</button>
+        <button class="nav-btn" data-page="penerima">🎁 PQ</button>
+        <button class="nav-btn" data-page="kupon">🎫 KUPON</button>
+    </div>
+    <div id="dashboard" class="page active"><h2>Dashboard</h2><div class="card-grid" id="statsArea"></div></div>
+    <div id="kambing" class="page"><h2>Sohibul Kambing</h2><div class="form-section"><div class="form-group"><label>Nama</label><input type="text" id="namaKambing"></div><div class="form-group"><label>HP</label><input type="tel" id="hpKambing"></div><div class="form-group"><label>Alamat</label><input type="text" id="alamatKambing"></div><button id="simpanKambing" class="btn-primary">SIMPAN</button></div><div class="table-responsive"><table id="tabelKambing"><thead><tr><th>Nama</th><th>HP</th><th>Aksi</th></tr></thead><tbody></tbody></table></div></div>
+    <div id="sapi" class="page"><h2>Sohibul Sapi</h2><div class="form-section"><div class="form-group"><label>Nama</label><input type="text" id="namaSapi"></div><div class="form-group"><label>HP</label><input type="tel" id="hpSapi"></div><div class="form-group"><label>Alamat</label><input type="text" id="alamatSapi"></div><button id="simpanSapi" class="btn-primary">SIMPAN</button></div><div class="table-responsive"><table id="tabelSapi"><thead><tr><th>Nama</th><th>HP</th><th>Aksi</th></tr></thead><tbody></tbody></table></div></div>
+    <div id="penerima" class="page"><h2>Penerima Qurban</h2><div class="form-section"><div class="form-group"><label>Nama</label><input type="text" id="namaPenerima"></div><div class="form-group"><label>HP</label><input type="tel" id="hpPenerima"></div><div class="form-group"><label>Jatah (kg)</label><input type="number" id="jatahPenerima" value="2"></div><button id="simpanPenerima" class="btn-primary">SIMPAN</button></div><div class="table-responsive"><table id="tabelPenerima"><thead><tr><th>Nama</th><th>HP</th><th>Jatah</th><th>Aksi</th></tr></thead><tbody></tbody></table></div></div>
+    <div id="kupon" class="page"><h2>Kupon</h2><div id="daftarKuponSHQ"></div><div id="daftarKuponPQ"></div></div>
+    <div class="footer">© SISTEM QURBAN - MASJID NURUL IHSAN</div>
+</div>
+</div>
+
+<div class="sync-status"><span class="sync-dot"></span><span id="syncText">Tersinkronisasi</span></div>
+
+<script>
+// KONFIGURASI FIREBASE
+const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyB6xF0RYLp3Nrl9B49CQLYIYQnbABEHFzc",
+    authDomain: "qurban-ni-1447.firebaseapp.com",
+    databaseURL: "https://qurban-ni-1447-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "qurban-ni-1447",
+    storageBucket: "qurban-ni-1447.firebasestorage.app",
+    messagingSenderId: "320052832851",
+    appId: "1:320052832851:web:b8278ec49aa51d033b74a6"
+};
+
+const PASSWORD_ADMIN = '1447';
+const BIAYA_KAMBING = 150000;
+const BIAYA_SAPI = 3700000;
+const NOMOR_ADMIN = '6281270225550';
+
+let database, firebaseReady = false;
+let dataKambing = [], dataSapi = [], dataPenerima = [];
+let kuponSHQ = [], kuponPQ = [];
+
+function initFirebase() {
+    try {
+        if (firebase.apps.length === 0) firebase.initializeApp(FIREBASE_CONFIG);
+        database = firebase.database();
+        firebaseReady = true;
+        document.getElementById('syncText').innerHTML = 'Tersinkronisasi';
+        loadData();
+        return true;
+    } catch(e) {
+        console.error(e);
+        alert('Koneksi Firebase gagal: ' + e.message);
+        return false;
+    }
+}
+
+function loadData() {
+    database.ref('qurbanData').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            dataKambing = data.kambing || [];
+            dataSapi = data.sapi || [];
+            dataPenerima = data.penerima || [];
+            kuponSHQ = data.kuponSHQ || [];
+            kuponPQ = data.kuponPQ || [];
+            renderAll();
+        }
+        document.getElementById('loginOverlay').style.display = 'flex';
+    });
+}
+
+function saveAll() {
+    if (!firebaseReady) return;
+    database.ref('qurbanData').set({
+        kambing: dataKambing, sapi: dataSapi, penerima: dataPenerima,
+        kuponSHQ: kuponSHQ, kuponPQ: kuponPQ
+    });
+}
+
+function generateKode(prefix, arr) {
+    let max = 0;
+    arr.forEach(k => { let num = parseInt(k.kode.split('-')[1]); if (num > max) max = num; });
+    return `${prefix}-${String(max+1).padStart(3,'0')}`;
+}
+
+function simpanKambing() {
+    let nama = document.getElementById('namaKambing').value.trim();
+    let hp = document.getElementById('hpKambing').value.trim();
+    if (!nama || !hp) { alert('Isi nama dan HP!'); return; }
+    let peserta = { id: Date.now(), nama, hp, alamat: document.getElementById('alamatKambing').value, biaya: BIAYA_KAMBING, waktu: new Date().toLocaleString() };
+    let kupon = { id: Date.now(), kode: generateKode('SHQ', kuponSHQ), tipe: 'kambing', nama, hp, status: 'Belum' };
+    dataKambing.push(peserta);
+    kuponSHQ.push(kupon);
+    saveAll();
+    renderAll();
+    alert('Data tersimpan! Kupon: ' + kupon.kode);
+    document.getElementById('namaKambing').value = '';
+    document.getElementById('hpKambing').value = '';
+    document.getElementById('alamatKambing').value = '';
+}
+
+function simpanSapi() {
+    let nama = document.getElementById('namaSapi').value.trim();
+    let hp = document.getElementById('hpSapi').value.trim();
+    if (!nama || !hp) { alert('Isi nama dan HP!'); return; }
+    let peserta = { id: Date.now(), nama, hp, alamat: document.getElementById('alamatSapi').value, biaya: BIAYA_SAPI, waktu: new Date().toLocaleString() };
+    let kupon = { id: Date.now(), kode: generateKode('SHQ', kuponSHQ), tipe: 'sapi', nama, hp, status: 'Belum' };
+    dataSapi.push(peserta);
+    kuponSHQ.push(kupon);
+    saveAll();
+    renderAll();
+    alert('Data tersimpan! Kupon: ' + kupon.kode);
+    document.getElementById('namaSapi').value = '';
+    document.getElementById('hpSapi').value = '';
+    document.getElementById('alamatSapi').value = '';
+}
+
+function simpanPenerima() {
+    let nama = document.getElementById('namaPenerima').value.trim();
+    let hp = document.getElementById('hpPenerima').value.trim();
+    if (!nama) { alert('Isi nama!'); return; }
+    let peserta = { id: Date.now(), nama, hp, jatah: parseFloat(document.getElementById('jatahPenerima').value), status: 'Belum', waktu: new Date().toLocaleString() };
+    let kupon = { id: Date.now(), kode: generateKode('PQ', kuponPQ), nama, hp, jatah: peserta.jatah, status: 'Belum' };
+    dataPenerima.push(peserta);
+    kuponPQ.push(kupon);
+    saveAll();
+    renderAll();
+    alert('Data tersimpan! Kupon: ' + kupon.kode);
+    document.getElementById('namaPenerima').value = '';
+    document.getElementById('hpPenerima').value = '';
+    document.getElementById('jatahPenerima').value = '2';
+}
+
+function renderAll() {
+    renderTabelKambing();
+    renderTabelSapi();
+    renderTabelPenerima();
+    renderKupon();
+    renderDashboard();
+}
+
+function renderTabelKambing() {
+    let tbody = document.querySelector('#tabelKambing tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    dataKambing.forEach(p => {
+        let kupon = kuponSHQ.find(k => k.nama === p.nama && k.tipe === 'kambing');
+        let row = tbody.insertRow();
+        row.insertCell(0).innerText = p.nama;
+        row.insertCell(1).innerText = p.hp;
+        row.insertCell(2).innerHTML = `<button onclick="hapusKambing(${p.id})" style="background:#d32f2f;color:white;padding:5px 10px">Hapus</button>`;
+    });
+}
+
+function renderTabelSapi() {
+    let tbody = document.querySelector('#tabelSapi tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    dataSapi.forEach(p => {
+        let row = tbody.insertRow();
+        row.insertCell(0).innerText = p.nama;
+        row.insertCell(1).innerText = p.hp;
+        row.insertCell(2).innerHTML = `<button onclick="hapusSapi(${p.id})" style="background:#d32f2f;color:white;padding:5px 10px">Hapus</button>`;
+    });
+}
+
+function renderTabelPenerima() {
+    let tbody = document.querySelector('#tabelPenerima tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    dataPenerima.forEach(p => {
+        let row = tbody.insertRow();
+        row.insertCell(0).innerText = p.nama;
+        row.insertCell(1).innerText = p.hp || '-';
+        row.insertCell(2).innerText = p.jatah + ' kg';
+        row.insertCell(3).innerHTML = `<button onclick="hapusPenerima(${p.id})" style="background:#d32f2f;color:white;padding:5px 10px">Hapus</button>`;
+    });
+}
+
+function renderKupon() {
+    let shqDiv = document.getElementById('daftarKuponSHQ');
+    let pqDiv = document.getElementById('daftarKuponPQ');
+    if (shqDiv) {
+        shqDiv.innerHTML = '<h3>Kupon Sohibul Qurban (SHQ)</h3>';
+        kuponSHQ.forEach(k => {
+            shqDiv.innerHTML += `<div class="kupon-card">Kode: ${k.kode}<br>Nama: ${k.nama}<br>Status: ${k.status}<br><button onclick="ambilKuponSHQ('${k.kode}')">✅ Tandai Diambil</button></div>`;
+        });
+    }
+    if (pqDiv) {
+        pqDiv.innerHTML = '<h3>Kupon Penerima Qurban (PQ)</h3>';
+        kuponPQ.forEach(k => {
+            pqDiv.innerHTML += `<div class="kupon-card">Kode: ${k.kode}<br>Nama: ${k.nama}<br>Jatah: ${k.jatah} kg<br>Status: ${k.status}<br><button onclick="ambilKuponPQ('${k.kode}')">✅ Tandai Diambil</button></div>`;
+        });
+    }
+}
+
+function ambilKuponSHQ(kode) {
+    let kupon = kuponSHQ.find(k => k.kode === kode);
+    if (kupon && kupon.status !== 'Sudah') {
+        kupon.status = 'Sudah';
+        saveAll();
+        renderAll();
+        alert('Kupon ' + kode + ' sudah ditandai diambil!');
+    }
+}
+
+function ambilKuponPQ(kode) {
+    let kupon = kuponPQ.find(k => k.kode === kode);
+    if (kupon && kupon.status !== 'Sudah') {
+        kupon.status = 'Sudah';
+        saveAll();
+        renderAll();
+        alert('Kupon ' + kode + ' sudah ditandai diambil!');
+    }
+}
+
+function hapusKambing(id) { dataKambing = dataKambing.filter(x => x.id !== id); kuponSHQ = kuponSHQ.filter(k => !(k.nama === dataKambing.find(p => p.id === id)?.nama && k.tipe === 'kambing')); saveAll(); renderAll(); }
+function hapusSapi(id) { dataSapi = dataSapi.filter(x => x.id !== id); kuponSHQ = kuponSHQ.filter(k => !(k.nama === dataSapi.find(p => p.id === id)?.nama && k.tipe === 'sapi')); saveAll(); renderAll(); }
+function hapusPenerima(id) { dataPenerima = dataPenerima.filter(x => x.id !== id); kuponPQ = kuponPQ.filter(k => !(k.nama === dataPenerima.find(p => p.id === id)?.nama)); saveAll(); renderAll(); }
+
+function renderDashboard() {
+    let total = dataKambing.length * BIAYA_KAMBING + dataSapi.length * BIAYA_SAPI;
+    document.getElementById('statsArea').innerHTML = `
+        <div class="stat-card"><h3>🐏 Kambing</h3><div class="stat-number">${dataKambing.length}</div></div>
+        <div class="stat-card"><h3>🐃 Sapi</h3><div class="stat-number">${dataSapi.length}</div></div>
+        <div class="stat-card"><h3>🎁 PQ</h3><div class="stat-number">${dataPenerima.length}</div></div>
+        <div class="stat-card"><h3>💰 Total Dana</h3><div class="stat-number">Rp ${total.toLocaleString()}</div></div>
+    `;
+}
+
+function daftarJamaah() {
+    let jenis = document.getElementById('jenisQurbanPendaftar').value;
+    let nama = document.getElementById('namaPendaftar').value.trim();
+    let hp = document.getElementById('hpPendaftar').value.trim();
+    let alamat = document.getElementById('alamatPendaftar').value;
+    let catatan = document.getElementById('catatanPendaftar').value;
+    if (!nama || !hp) { alert('Isi nama dan HP!'); return; }
+    let peserta, kupon;
+    if (jenis === 'kambing') {
+        peserta = { id: Date.now(), nama, hp, alamat, biaya: BIAYA_KAMBING, waktu: new Date().toLocaleString() };
+        kupon = { id: Date.now(), kode: generateKode('SHQ', kuponSHQ), tipe: 'kambing', nama, hp, status: 'Belum' };
+        dataKambing.push(peserta);
+        kuponSHQ.push(kupon);
+    } else {
+        peserta = { id: Date.now(), nama, hp, alamat, biaya: BIAYA_SAPI, waktu: new Date().toLocaleString() };
+        kupon = { id: Date.now(), kode: generateKode('SHQ', kuponSHQ), tipe: 'sapi', nama, hp, status: 'Belum' };
+        dataSapi.push(peserta);
+        kuponSHQ.push(kupon);
+    }
+    saveAll();
+    let pesanWA = `Assalamualaikum, saya ingin konfirmasi pendaftaran qurban.\nNama: ${nama}\nHP: ${hp}\nAlamat: ${alamat || '-'}\nJenis: ${jenis === 'kambing' ? 'Kambing' : 'Sapi'}\nKode Kupon: ${kupon.kode}\nCatatan: ${catatan || '-'}`;
+    window.open(`https://wa.me/${NOMOR_ADMIN}?text=${encodeURIComponent(pesanWA)}`, '_blank');
+    document.getElementById('notifikasiDaftar').innerHTML = `✅ Pendaftaran berhasil! Kupon: ${kupon.kode}`;
+    document.getElementById('notifikasiDaftar').classList.remove('hidden');
+    setTimeout(() => document.getElementById('notifikasiDaftar').classList.add('hidden'), 5000);
+    document.getElementById('namaPendaftar').value = '';
+    document.getElementById('alamatPendaftar').value = '';
+    document.getElementById('hpPendaftar').value = '';
+    document.getElementById('catatanPendaftar').value = '';
+    renderAll();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initFirebase();
+    
+    document.getElementById('adminBtn').onclick = () => document.getElementById('passwordSection').classList.toggle('hidden');
+    document.getElementById('loginAdminBtn').onclick = () => {
+        if (document.getElementById('passwordInput').value === PASSWORD_ADMIN) {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('adminMode').style.display = 'block';
+            renderAll();
+        } else alert('Password salah!');
+    };
+    document.getElementById('daftarBtn').onclick = () => {
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('jamaahMode').style.display = 'block';
+    };
+    document.getElementById('switchToAdminFromJamaah').onclick = () => {
+        document.getElementById('loginOverlay').style.display = 'flex';
+        document.getElementById('jamaahMode').style.display = 'none';
+    };
+    document.getElementById('switchToJamaahFromAdmin').onclick = () => {
+        document.getElementById('adminMode').style.display = 'none';
+        document.getElementById('jamaahMode').style.display = 'block';
+    };
+    document.getElementById('btnKonfirmasiWAJamaah').onclick = daftarJamaah;
+    document.getElementById('simpanKambing').onclick = simpanKambing;
+    document.getElementById('simpanSapi').onclick = simpanSapi;
+    document.getElementById('simpanPenerima').onclick = simpanPenerima;
+    
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(btn.dataset.page).classList.add('active');
+        };
+    });
+});
+</script>
+</body>
+</html>
